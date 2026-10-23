@@ -4612,7 +4612,7 @@ async function startAnalysis(mode) {
 
 // ========== KEYWORD CHECKER ==========
 // GPT matching helper: given a topic name, keywords, rows and a source label, returns matched rows
-async function gptMatchRows(topicName, keywords, allRows, sourceLabel, scope) {
+async function gptMatchRows(topicName, keywords, allRows, sourceLabel, scope, originalQuery) {
   const candidates = allRows.filter(r => {
     const slug = r.url.toLowerCase();
     return keywords.some(kw => slug.includes(kw));
@@ -4625,16 +4625,18 @@ async function gptMatchRows(topicName, keywords, allRows, sourceLabel, scope) {
     return `[${i}] ${path} | ${r.clicks} | ${r.impressions}`;
   }).join('\n');
 
+  const queryHint = originalQuery ? `\nIMPORTANT: The user's original search query was "${originalQuery}". Only match URLs about THIS SPECIFIC subject. Do NOT include URLs about different but related subjects (e.g. if the query is about "Bafana Bafana" — the men's team — do NOT include URLs about "Banyana Banyana" — the women's team. If the query is about a specific player, do NOT include URLs about different players from the same team).` : '';
+
   const strictness = scope === 'specific'
-    ? `You are a ${sourceLabel} performance analyst. You have a numbered list of URLs (pre-filtered by keyword). The topic is a NICHE angle combining multiple concepts. A URL matches ONLY if it covers the INTERSECTION of ALL concepts in the topic — not just one of them. For example, "Ivorian players Marseille" requires BOTH an Ivory Coast connection AND a Marseille connection in the same article. An article about Ivory Coast alone or Marseille alone does NOT match. Be strict. Return only URLs that genuinely cover the combined angle.\n\nURL list format: [index] path | clicks | impressions`
-    : `You are a ${sourceLabel} performance analyst. You have a numbered list of URLs (pre-filtered by keyword). Identify which URLs are truly about the SAME TOPIC (same team, player, event, or subject). Return the indices. Be inclusive — if the URL is reasonably about this topic, include it.\n\nURL list format: [index] path | clicks | impressions`;
+    ? `You are a ${sourceLabel} performance analyst. You have a numbered list of URLs (pre-filtered by keyword). The topic is a NICHE angle combining multiple concepts. A URL matches ONLY if it covers the INTERSECTION of ALL concepts in the topic — not just one of them. For example, "Ivorian players Marseille" requires BOTH an Ivory Coast connection AND a Marseille connection in the same article. An article about Ivory Coast alone or Marseille alone does NOT match. Be strict. Return only URLs that genuinely cover the combined angle.${queryHint}\n\nURL list format: [index] path | clicks | impressions`
+    : `You are a ${sourceLabel} performance analyst. You have a numbered list of URLs (pre-filtered by keyword). Identify which URLs are truly about the SAME TOPIC (same team, player, event, or subject). Return the indices. Be selective — only include URLs that are specifically about this exact topic, not about related but different subjects.${queryHint}\n\nURL list format: [index] path | clicks | impressions`;
 
   try {
     const data = await callOpenAI({
       model: OPENAI_MODEL,
       messages: [
         { role: 'system', content: strictness },
-        { role: 'user', content: `Topic: "${topicName}"\n\nCandidate URLs (${subset.length} from ${allRows.length} total):\n${compactList}` }
+        { role: 'user', content: `Topic: "${topicName}"${originalQuery ? `\nUser's original query: "${originalQuery}"` : ''}\n\nCandidate URLs (${subset.length} from ${allRows.length} total):\n${compactList}` }
       ],
       tools: [{
         type: 'function',
@@ -4870,8 +4872,8 @@ async function startKeywordAnalysis() {
         for (const [tab, src] of Object.entries(sourceData)) {
           // D30 and Search GPT matching run in parallel (D10 derives from D30, no GPT)
           const [matchD30, matchSearch] = await Promise.all([
-            src.d30.length > 0 ? gptMatchRows(entity.name, keywords, src.d30, 'Discover 30d', 'broad') : Promise.resolve([]),
-            src.search.length > 0 ? gptMatchRows(entity.name, keywords, src.search, 'Search 10d', 'broad') : Promise.resolve([])
+            src.d30.length > 0 ? gptMatchRows(entity.name, keywords, src.d30, 'Discover 30d', 'broad', kwText) : Promise.resolve([]),
+            src.search.length > 0 ? gptMatchRows(entity.name, keywords, src.search, 'Search 10d', 'broad', kwText) : Promise.resolve([])
           ]);
           const matchD30Urls = new Set(matchD30.map(r => r.url));
           const matchD10 = src.d10.filter(r => matchD30Urls.has(r.url));
@@ -4938,8 +4940,8 @@ async function startKeywordAnalysis() {
             ? entity.url_keywords.map(k => k.toLowerCase().trim()).filter(k => k.length > 1)
             : extractTopicKeywords(entity.name);
           if (keywords.length > 0) {
-            matchD30 = src.d30.length > 0 ? await gptMatchRows(entity.name, keywords, src.d30, 'Discover 30d', 'specific') : [];
-            matchSearch = src.search.length > 0 ? await gptMatchRows(entity.name, keywords, src.search, 'Search 10d', 'specific') : [];
+            matchD30 = src.d30.length > 0 ? await gptMatchRows(entity.name, keywords, src.d30, 'Discover 30d', 'specific', kwText) : [];
+            matchSearch = src.search.length > 0 ? await gptMatchRows(entity.name, keywords, src.search, 'Search 10d', 'specific', kwText) : [];
           }
         }
 
@@ -5057,7 +5059,14 @@ ENTITY EXAMPLES:
 
 - "South African Premier Soccer League relegation" →
   entity "Premier Soccer League" (broad), url_keywords: ["psl", "premier-soccer-league", "betway-premiership"]
-  entity "PSL relegation" (specific), url_keywords: ["psl", "relegation", "relegate"]` },
+  entity "PSL relegation" (specific), url_keywords: ["psl", "relegation", "relegate"]
+
+CRITICAL — PRESERVE SPECIFIC NAMES:
+- When the user types a specific team/player/event name, keep that EXACT name as the entity — do NOT generalize.
+- "bafana bafana" → entity "Bafana Bafana" (broad), url_keywords: ["bafana-bafana", "bafana"]. NOT "South Africa national football team" — that's too broad and would match Banyana Banyana (women's team) articles too.
+- "banyana banyana" → entity "Banyana Banyana" (broad), url_keywords: ["banyana-banyana", "banyana"]. NOT "South Africa women's football team".
+- "super eagles" → entity "Super Eagles" (broad), url_keywords: ["super-eagles", "super-eagle"]. NOT "Nigeria national football team".
+- The rule: if the user's input IS a specific name/nickname, the entity name = that name. Only add a broader parent entity if the query has multiple components.` },
       { role: 'user', content: text }
     ],
     tools: [{
