@@ -4061,12 +4061,14 @@ const CORS_PROXIES = [
   { name:'corsproxy.org',   url: u => 'https://corsproxy.org/?'+encodeURIComponent(u) },
 ];
 const OPENAI_MODEL = 'gpt-4o';
-const DEFAULT_GAS_PROXY = 'https://script.google.com/macros/s/AKfycbydan3oxJpVWmT1VDWw3xKUWFqy7tW4Bkb2-guLhufwQItALaZpXTu2SlH2xKaQ_i77yg/exec';
-const DEFAULT_DISCOVER_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzDGCChRg2qmqFMxm9Y55B3VF_shHhTzrjMIg5e--9jG3lcGkUWfEX4pXajCRgCuRAq6RKOYIsRBDm/pubhtml';
-const DEFAULT_DISCOVER_SHEET_30D = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTU8KEN1IQpVyz9hZg0TtnO7wCP4OWtsNkB6wqyVVSdMgZhy6O_jy9fecwzzoP8fmkN640tq5l912sq/pubhtml';
-const DEFAULT_DISCOVER_SHEET_10D = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnayllIjjOD3u0l7dv_LjD56DZnVuamM7_y6QMbnsTlOACyeXZZ5MP_eTC_uqu-8CHk_4zv6C-z2na/pubhtml';
-const DEFAULT_SEARCH_SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_xBBpbRcqRO8du0wSfLvPXms6LBBFyaqJX0KNwAARqV-iulmwz8PHqldYfbG9vffCday53ZrrsbNb/pubhtml';
-
+const _PROXY_PW = 'Xk9mP4wQ7vL2tR8nJ6yH3sA5fG1d';
+const _h = window.location.hostname.toLowerCase();
+const _ok = _h === 'fannynorthstar.github.io' || _h === 'localhost' || _h === '127.0.0.1';
+const DEFAULT_GAS_PROXY = _ok ? 'https://script.google.com/macros/s/AKfycbydan3oxJpVWmT1VDWw3xKUWFqy7tW4Bkb2-guLhufwQItALaZpXTu2SlH2xKaQ_i77yg/exec' : '';
+const DEFAULT_DISCOVER_SHEET = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzDGCChRg2qmqFMxm9Y55B3VF_shHhTzrjMIg5e--9jG3lcGkUWfEX4pXajCRgCuRAq6RKOYIsRBDm/pubhtml' : '';
+const DEFAULT_DISCOVER_SHEET_30D = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTU8KEN1IQpVyz9hZg0TtnO7wCP4OWtsNkB6wqyVVSdMgZhy6O_jy9fecwzzoP8fmkN640tq5l912sq/pubhtml' : '';
+const DEFAULT_DISCOVER_SHEET_10D = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnayllIjjOD3u0l7dv_LjD56DZnVuamM7_y6QMbnsTlOACyeXZZ5MP_eTC_uqu-8CHk_4zv6C-z2na/pubhtml' : '';
+const DEFAULT_SEARCH_SHEET = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_xBBpbRcqRO8du0wSfLvPXms6LBBFyaqJX0KNwAARqV-iulmwz8PHqldYfbG9vffCday53ZrrsbNb/pubhtml' : '';
 // ========== FLUFF FEEDBACK LEARNING ==========
 let _feedbackCache = null;
 let _feedbackCacheTime = 0;
@@ -4079,7 +4081,7 @@ async function fetchFluffFeedback() {
   let remote = [];
   try {
     const proxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
-    const resp = await fetchWithTimeout(proxy + '?action=feedback', {redirect:'follow'}, 10000);
+    const resp = await fetchWithTimeout(proxy + '?action=feedback&pw=' + encodeURIComponent(_PROXY_PW), {redirect:'follow'}, 10000);
     if (resp.ok) {
       const j = await resp.json();
       if (j.feedback && j.feedback.length > 0) remote = j.feedback;
@@ -4166,10 +4168,12 @@ async function callOpenAI(body) {
   let proxyError = '';
   // Try GAS proxy first (key stored server-side)
   try {
+    const _postBody = typeof body === 'string' ? JSON.parse(body) : { ...body };
+    _postBody._pw = _PROXY_PW;
     const resp = await fetchWithTimeout(proxy, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: typeof body === 'string' ? body : JSON.stringify(body),
+      body: JSON.stringify(_postBody),
       redirect: 'follow'
     }, 60000);
     if (resp.ok) {
@@ -5697,7 +5701,7 @@ async function fetchViaProxy(targetUrl) {
 
   if (customProxy) {
     const sep = customProxy.includes('?') ? '&' : '?';
-    const proxyUrl = customProxy + sep + 'url=' + encodeURIComponent(targetUrl);
+    const proxyUrl = customProxy + sep + 'url=' + encodeURIComponent(targetUrl) + '&pw=' + encodeURIComponent(_PROXY_PW);
     primaryRacers.push(
       fetchWithTimeout(proxyUrl, { redirect:'follow' }, 12000)
         .then(r => r.ok ? r.text().then(t => { console.log('[proxy] GAS OK for', tag); return t; }) : Promise.reject(`custom: HTTP ${r.status}`))
