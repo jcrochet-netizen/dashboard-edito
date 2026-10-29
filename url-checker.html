@@ -1306,7 +1306,10 @@ body {
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <h3 data-t="settings_title">Settings</h3>
-    <label for="settingsApiKey">OpenAI API Key</label>
+    <label for="settingsAccessCode" data-t="settings_access_label">Access code</label>
+    <input type="password" id="settingsAccessCode" autocomplete="off">
+    <div class="hint" data-t="settings_access_hint">Your personal code for the team proxy (AI analysis, page fetching, feedback). Stored locally in your browser only.</div>
+    <label for="settingsApiKey" style="margin-top:16px">OpenAI API Key</label>
     <input type="password" id="settingsApiKey" placeholder="sk-proj-...">
     <div class="hint" data-t="settings_hint">Stored locally in your browser only. Used for AI analysis (Search, Discover, editorial review).</div>
     <label for="settingsSheetUrl" style="margin-top:16px" data-t="settings_sheet_label">Discover Data (Google Sheets URL)</label>
@@ -1411,6 +1414,8 @@ const T = {
     ai_title: "AI Analysis",
     settings_title: "Settings",
     settings_hint: "Stored locally in your browser only. Used for AI analysis (Search, Discover, editorial review).",
+    settings_access_label: "Access code",
+    settings_access_hint: "Your personal code for the team proxy (AI analysis, page fetching, feedback). Stored locally in your browser only.",
     btn_cancel: "Cancel",
     btn_save: "Save",
     err_empty: "Enter a URL to analyze.",
@@ -1419,7 +1424,7 @@ const T = {
     err_fetch: "Could not fetch the page (HTTP {status}). Check the URL.",
     err_fetch_hint: "Could not fetch the page ({status}). Try pasting the HTML directly instead.",
     ai_unavailable: "AI analysis unavailable. Check your API key in Settings or try again.",
-    ai_no_key: "AI features require the CORS proxy to be configured with an OpenAI key, or a local API key in Settings.",
+    ai_no_key: "AI features need your access code in Settings, or your own OpenAI API key.",
     err_openai: "OpenAI API error ({status}): {msg}",
     err_no_tool: "No tool response from GPT-4o.",
     prog_fetch: "Fetching the page...",
@@ -1714,6 +1719,8 @@ const T = {
     ai_title: "Analyse IA",
     settings_title: "Paramètres",
     settings_hint: "Stockée localement dans votre navigateur. Utilisée pour l'analyse IA (Search, Discover, lecture éditoriale).",
+    settings_access_label: "Code d'accès",
+    settings_access_hint: "Votre code personnel pour le proxy de l'équipe (analyse IA, chargement des pages, retours). Stocké uniquement dans votre navigateur.",
     btn_cancel: "Annuler",
     btn_save: "Enregistrer",
     err_empty: "Entrez une URL à analyser.",
@@ -1721,7 +1728,7 @@ const T = {
     err_fetch: "Impossible de récupérer la page (HTTP {status}). Vérifiez l'URL.",
     err_fetch_hint: "Impossible de récupérer la page ({status}). Essayez de coller le HTML directement.",
     ai_unavailable: "Analyse IA indisponible. Vérifiez votre clé API dans les Paramètres ou réessayez.",
-    ai_no_key: "L'IA nécessite que le proxy CORS soit configuré avec une clé OpenAI, ou une clé API locale dans les Paramètres.",
+    ai_no_key: "L'IA nécessite votre code d'accès dans les Paramètres, ou votre propre clé API OpenAI.",
     err_openai: "Erreur OpenAI API ({status}) : {msg}",
     err_no_tool: "Pas de réponse outil de GPT-4o.",
     prog_fetch: "Récupération de la page...",
@@ -2008,6 +2015,8 @@ const T = {
     ai_title: "Análise IA",
     settings_title: "Configurações",
     settings_hint: "Armazenada localmente no seu navegador. Usada para análise IA (Search, Discover, revisão editorial).",
+    settings_access_label: "Código de acesso",
+    settings_access_hint: "Seu código pessoal para o proxy da equipe (análise IA, carregamento de páginas, feedback). Armazenado apenas no seu navegador.",
     btn_cancel: "Cancelar",
     btn_save: "Salvar",
     err_empty: "Insira uma URL para analisar.",
@@ -2015,7 +2024,7 @@ const T = {
     err_fetch: "Não foi possível acessar a página (HTTP {status}). Verifique a URL.",
     err_fetch_hint: "Não foi possível acessar a página ({status}). Tente colar o HTML diretamente.",
     ai_unavailable: "Análise IA indisponível. Verifique sua chave API nas Configurações ou tente novamente.",
-    ai_no_key: "IA requer que o proxy CORS tenha uma chave OpenAI configurada, ou uma chave API local nas Configurações.",
+    ai_no_key: "IA requer seu código de acesso nas Configurações, ou sua própria chave API OpenAI.",
     err_openai: "Erro na API OpenAI ({status}): {msg}",
     err_no_tool: "Sem resposta de ferramenta do GPT-4o.",
     prog_fetch: "Buscando a página...",
@@ -2302,6 +2311,8 @@ const T = {
     ai_title: "Análisis IA",
     settings_title: "Ajustes",
     settings_hint: "Almacenado localmente en tu navegador. Usado para análisis IA (Search, Discover, revisión editorial).",
+    settings_access_label: "Código de acceso",
+    settings_access_hint: "Tu código personal para el proxy del equipo (análisis IA, carga de páginas, feedback). Almacenado solo en tu navegador.",
     btn_cancel: "Cancelar",
     btn_save: "Guardar",
     err_empty: "Introduce una URL para analizar.",
@@ -2310,7 +2321,7 @@ const T = {
     err_fetch: "No se pudo acceder a la página (HTTP {status}). Verifica la URL.",
     err_fetch_hint: "No se pudo acceder a la página ({status}). Intenta pegar el HTML directamente.",
     ai_unavailable: "Análisis IA no disponible. Verifica tu clave API en Ajustes o inténtalo de nuevo.",
-    ai_no_key: "IA requiere que el proxy CORS tenga una clave OpenAI configurada, o una clave API local en Ajustes.",
+    ai_no_key: "IA requiere tu código de acceso en Ajustes, o tu propia clave API de OpenAI.",
     err_openai: "Error de la API OpenAI ({status}): {msg}",
     err_no_tool: "Sin respuesta de herramienta de GPT-4o.",
     prog_fetch: "Obteniendo la página...",
@@ -2587,10 +2598,22 @@ const CORS_PROXIES = [
   { name:'corsproxy.org',   url: u => 'https://corsproxy.org/?'+encodeURIComponent(u) },
 ];
 const OPENAI_MODEL = 'gpt-4o';
-const _PROXY_PW = 'Xk9mP4wQ7vL2tR8nJ6yH3sA5fG1d';
 const _h = window.location.hostname.toLowerCase();
-const _ok = _h === 'fannynorthstar.github.io' || _h === 'localhost' || _h === '127.0.0.1';
+const _ok = _h === 'jcrochet-netizen.github.io' || _h === 'fannynorthstar.github.io' || _h === 'localhost' || _h === '127.0.0.1';
 const DEFAULT_GAS_PROXY = _ok ? 'https://script.google.com/macros/s/AKfycbydan3oxJpVWmT1VDWw3xKUWFqy7tW4Bkb2-guLhufwQItALaZpXTu2SlH2xKaQ_i77yg/exec' : '';
+// Personal access code for the team GAS proxy, entered in Settings — never written in this file
+function getAccessCode() { return (localStorage.getItem('media_dashboard_access_code') || '').trim(); }
+// A proxy set in Settings is used as is; the team proxy is only called with an access code
+function getGasProxy() {
+  const custom = localStorage.getItem('media_dashboard_cors_proxy');
+  if (custom) return custom;
+  return getAccessCode() ? DEFAULT_GAS_PROXY : '';
+}
+function gasGetUrl(proxy, query) {
+  return proxy + (proxy.includes('?') ? '&' : '?') + query + '&pw=' + encodeURIComponent(getAccessCode());
+}
+// The GAS proxy answers HTTP 200 even when it refuses the code
+function isGasDenied(text) { return /^\s*\{"error":"unauthorized"/.test(text); }
 const DEFAULT_DISCOVER_SHEET = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzDGCChRg2qmqFMxm9Y55B3VF_shHhTzrjMIg5e--9jG3lcGkUWfEX4pXajCRgCuRAq6RKOYIsRBDm/pubhtml' : '';
 const DEFAULT_DISCOVER_SHEET_30D = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTU8KEN1IQpVyz9hZg0TtnO7wCP4OWtsNkB6wqyVVSdMgZhy6O_jy9fecwzzoP8fmkN640tq5l912sq/pubhtml' : '';
 const DEFAULT_DISCOVER_SHEET_10D = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnayllIjjOD3u0l7dv_LjD56DZnVuamM7_y6QMbnsTlOACyeXZZ5MP_eTC_uqu-8CHk_4zv6C-z2na/pubhtml' : '';
@@ -2606,8 +2629,9 @@ async function fetchFluffFeedback() {
   // Try remote first
   let remote = [];
   try {
-    const proxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
-    const resp = await fetchWithTimeout(proxy + '?action=feedback&pw=' + encodeURIComponent(_PROXY_PW), {redirect:'follow'}, 10000);
+    const proxy = getGasProxy();
+    if (!proxy) throw new Error('no proxy');
+    const resp = await fetchWithTimeout(gasGetUrl(proxy, 'action=feedback'), {redirect:'follow'}, 10000);
     if (resp.ok) {
       const j = await resp.json();
       if (j.feedback && j.feedback.length > 0) remote = j.feedback;
@@ -2690,12 +2714,14 @@ function buildCalibrationBlock(feedback, currentDomain) {
 
 // ========== OPENAI PROXY ==========
 async function callOpenAI(body) {
-  const proxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
+  const proxy = getGasProxy();
   let proxyError = '';
   // Try GAS proxy first (key stored server-side)
-  try {
+  if (!proxy) {
+    proxyError = 'no access code in Settings';
+  } else try {
     const _postBody = typeof body === 'string' ? JSON.parse(body) : { ...body };
-    _postBody._pw = _PROXY_PW;
+    _postBody._pw = getAccessCode();
     const resp = await fetchWithTimeout(proxy, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
@@ -2732,6 +2758,7 @@ async function callOpenAI(body) {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('langSelect').value = LANG;
   applyTranslations();
+  document.getElementById('settingsAccessCode').value = getAccessCode();
   const saved = localStorage.getItem('media_dashboard_openai_key');
   if (saved) document.getElementById('settingsApiKey').value = saved;
   const savedSheet = localStorage.getItem('media_dashboard_discover_sheet');
@@ -2771,6 +2798,11 @@ function closeSettings() {
   document.getElementById('settingsModal').classList.remove('active');
 }
 function saveSettings() {
+  const accessCode = document.getElementById('settingsAccessCode').value.trim();
+  if (accessCode) localStorage.setItem('media_dashboard_access_code', accessCode);
+  else localStorage.removeItem('media_dashboard_access_code');
+  // A new code may unlock the shared feedback: refetch it
+  _feedbackCache = null;
   const key = document.getElementById('settingsApiKey').value.trim();
   if (key) localStorage.setItem('media_dashboard_openai_key', key);
   else localStorage.removeItem('media_dashboard_openai_key');
@@ -4195,15 +4227,14 @@ async function fetchViaProxy(targetUrl) {
   const tag = targetUrl.substring(0, 80);
 
   // Phase 1: Race GAS proxy vs direct CORS — whoever wins first
-  const customProxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
+  const customProxy = getGasProxy();
   const primaryRacers = [];
 
   if (customProxy) {
-    const sep = customProxy.includes('?') ? '&' : '?';
-    const proxyUrl = customProxy + sep + 'url=' + encodeURIComponent(targetUrl) + '&pw=' + encodeURIComponent(_PROXY_PW);
+    const proxyUrl = gasGetUrl(customProxy, 'url=' + encodeURIComponent(targetUrl));
     primaryRacers.push(
       fetchWithTimeout(proxyUrl, { redirect:'follow' }, 12000)
-        .then(r => r.ok ? r.text().then(t => { console.log('[proxy] GAS OK for', tag); return t; }) : Promise.reject(`custom: HTTP ${r.status}`))
+        .then(r => r.ok ? r.text().then(t => { if (isGasDenied(t)) return Promise.reject('custom: access code refused'); console.log('[proxy] GAS OK for', tag); return t; }) : Promise.reject(`custom: HTTP ${r.status}`))
         .catch(e => { errors.push(typeof e === 'string' ? e : `custom: ${e.name === 'AbortError' ? 'timeout' : e.message}`); return Promise.reject(e); })
     );
   }
@@ -6289,11 +6320,11 @@ function fluffFeedback(fid, action) {
 
   // POST to GAS proxy → Google Sheet (fire-and-forget)
   try {
-    const proxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
-    fetch(proxy, {
+    const proxy = getGasProxy();
+    if (proxy) fetch(proxy, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'feedback', url: articleUrl, domain, quote: decodedQuote, tests_failed: decodedTests, verdict, reviewer }),
+      body: JSON.stringify({ action: 'feedback', url: articleUrl, domain, quote: decodedQuote, tests_failed: decodedTests, verdict, reviewer, _pw: getAccessCode() }),
       redirect: 'follow'
     }).catch(() => {});
   } catch(e) {}
@@ -6744,17 +6775,15 @@ async function fetchAutocompleteSuggestions(keyword, lang) {
 
   async function fetchOne(q) {
     const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(q)}&hl=${lang}`;
-    const proxy = localStorage.getItem('media_dashboard_cors_proxy') || DEFAULT_GAS_PROXY;
-    const sep = proxy.includes('?') ? '&' : '?';
-    const proxyUrl = proxy + sep + 'url=' + encodeURIComponent(url);
+    const proxy = getGasProxy();
 
     // Race CORS direct vs proxy — whichever responds first wins
-    const directP = fetchWithTimeout(url, { mode: 'cors' }, 3000)
-      .then(r => r.ok ? r.json().then(d => d[1] || []) : Promise.reject('not ok'));
-    const proxyP = fetchWithTimeout(proxyUrl, { redirect: 'follow' }, 5000)
-      .then(r => r.ok ? r.text().then(t => JSON.parse(t)[1] || []) : Promise.reject('not ok'));
+    const racers = [fetchWithTimeout(url, { mode: 'cors' }, 3000)
+      .then(r => r.ok ? r.json().then(d => d[1] || []) : Promise.reject('not ok'))];
+    if (proxy) racers.push(fetchWithTimeout(gasGetUrl(proxy, 'url=' + encodeURIComponent(url)), { redirect: 'follow' }, 5000)
+      .then(r => r.ok ? r.text().then(t => { const d = JSON.parse(t); return Array.isArray(d) ? d[1] || [] : Promise.reject('proxy refused'); }) : Promise.reject('not ok')));
 
-    try { return await Promise.any([directP, proxyP]); }
+    try { return await Promise.any(racers); }
     catch(e) { return []; }
   }
 
