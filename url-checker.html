@@ -2559,7 +2559,8 @@ function t(key, replacements) {
   let s = (T[LANG] && T[LANG][key]) || T.en[key] || key;
   if (replacements) {
     for (const [k, v] of Object.entries(replacements)) {
-      s = s.replace('{' + k + '}', v);
+      // split/join: replaces every occurrence and ignores "$&"-style patterns in the value
+      s = s.split('{' + k + '}').join(v);
     }
   }
   return s;
@@ -4113,7 +4114,7 @@ function renderLatestNews(tieredNews, containerId) {
       const metaParts = [sourceHtml, agoHtml].filter(Boolean);
       h += `<div style="padding:6px 10px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:13px;line-height:1.5">`;
       if (item.link) {
-        h += `<a href="${esc(item.link)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-weight:500">${esc(item.title)}</a>`;
+        h += `<a href="${safeUrl(item.link)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-weight:500">${esc(item.title)}</a>`;
       } else {
         h += `<span style="font-weight:500">${esc(item.title)}</span>`;
       }
@@ -4361,7 +4362,11 @@ function checkCanonical(doc, url) {
   const link = doc.querySelector('link[rel="canonical"]');
   if (link && link.getAttribute('href')) {
     const tgt = link.getAttribute('href').trim().replace(/\/$/,'');
-    if (url.replace(/\/$/,'') === tgt || new URL(url).pathname.replace(/\/$/,'') === tgt)
+    // Pasted HTML has no real URL to compare against: just report where the canonical points
+    let path;
+    try { path = new URL(url).pathname.replace(/\/$/,''); }
+    catch(e) { return { label: t('canonical_label'), status: 'ok', detail: t('canonical_other', {target: tgt.substring(0,120)}) }; }
+    if (url.replace(/\/$/,'') === tgt || path === tgt)
       return { label: t('canonical_label'), status: 'ok', detail: t('canonical_ok') };
     return { label: t('canonical_label'), status: 'warning', detail: t('canonical_other', {target: tgt.substring(0,120)}) };
   }
@@ -4628,8 +4633,11 @@ function runContentChecks(doc, url) {
   else if (words < 150) { wcS = 'warning'; wcD = t('wc_short', {n:words}); }
   checks.push({ key: 'word_count', label: t('wc_label'), status: wcS, detail: wcD, value: words });
 
-  const isHttps = url.startsWith('https://');
-  checks.push({ key: 'https', label: t('https_label'), status: isHttps?'ok':'fail', detail: isHttps?t('https_ok'):t('https_fail') });
+  // Skipped for pasted HTML (Check Draft): there is no URL to test
+  if (/^https?:\/\//i.test(url)) {
+    const isHttps = url.startsWith('https://');
+    checks.push({ key: 'https', label: t('https_label'), status: isHttps?'ok':'fail', detail: isHttps?t('https_ok'):t('https_fail') });
+  }
 
   const links = [];
   for (const el of coreEls) for (const a of el.querySelectorAll('a[href]')) links.push(a);
@@ -4689,6 +4697,8 @@ async function runAIAnalysis(url, title, bodyText) {
     ? `\n\nRéponds en français dans les champs "justification" et "commentaire". Les champs mot_cle_principal, cluster_thematique et entites_principales doivent rester dans la langue d'origine de l'article.`
     : LANG === 'pt-br'
     ? `\n\nEscreva os campos "justification" e "commentaire" em português do Brasil. Os campos mot_cle_principal, cluster_thematique e entites_principales devem permanecer no idioma original do artigo.`
+    : LANG === 'es'
+    ? `\n\nEscribe los campos "justification" y "commentaire" en español. Los campos mot_cle_principal, cluster_thematique y entites_principales deben permanecer en el idioma original del artículo.`
     : `\n\nWrite the "justification" and "commentaire" fields in English. The mot_cle_principal, cluster_thematique and entites_principales fields must stay in the article's ORIGINAL language.`;
 
   const systemPrompt = `Tu es un analyste éditorial SEO pour un réseau de sites d'actualité sportive.
@@ -5089,86 +5099,96 @@ function buildCsvUrlNoTab(sheetUrl) {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
 }
 
+// Sheet numbers use a comma as decimal separator ("14,56%", "6,548988353"); counts have no thousands separator.
+// Shared by the CSV and HTML parsers so both read the same value.
+function parseSheetNumber(raw) {
+  let v = String(raw ?? '').replace(/["%\s ]/g, '');
+  if (v.includes(',') && v.includes('.')) {
+    // Both present: the last one is the decimal separator ("1.234,5" or "1,234.5")
+    v = v.lastIndexOf(',') > v.lastIndexOf('.') ? v.replace(/\./g, '').replace(',', '.') : v.replace(/,/g, '');
+  } else {
+    v = v.replace(',', '.');
+  }
+  return /^-?\d*\.?\d+$/.test(v) ? parseFloat(v) : NaN;
+}
+
+// Split one CSV line, keeping empty cells so columns stay aligned ("a,,b" → 3 cells)
+function splitCsvLine(line) {
+  const cells = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else cur += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',' || ch === '\t') { cells.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  cells.push(cur);
+  return cells;
+}
+
+// grid[0] is the header row. Returns [{url, clicks, impressions, ctr, position?}]
+function rowsFromGrid(grid) {
+  if (grid.length < 2) return [];
+  const cell = (r, c) => String(r[c] ?? '').trim();
+  // Auto-detect URL column (might not always be column 0)
+  let urlCol = grid[0].findIndex(h => ['url','page','landing page','address','top pages'].includes(String(h).trim().toLowerCase()));
+  if (urlCol < 0) urlCol = grid[1].findIndex(c => String(c).trim().startsWith('http'));
+  if (urlCol < 0) urlCol = 0;
+  const data = grid.slice(1).filter(r => r.length >= 3 && cell(r, urlCol).startsWith('http'));
+  // Numeric columns (clicks, impressions, ctr, position — in that order) are fixed for the whole table,
+  // so an empty cell reads as 0 instead of shifting the next value into its column
+  const width = Math.max(0, ...data.map(r => r.length));
+  const numCols = [];
+  for (let c = 0; c < width; c++) {
+    if (c !== urlCol && data.some(r => !isNaN(parseSheetNumber(r[c])))) numCols.push(c);
+  }
+  return data
+    .map(r => numCols.map(c => parseSheetNumber(r[c])))
+    .map((nums, i) => {
+      if (nums.every(n => isNaN(n))) return null;
+      const row = { url: cell(data[i], urlCol), clicks: nums[0] || 0, impressions: nums[1] || 0, ctr: nums[2] || 0 };
+      if (nums[3] > 0) row.position = nums[3];
+      return row;
+    })
+    .filter(Boolean);
+}
+
 function parseDiscoverCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
-  if (lines.length < 2) return [];
-  // Auto-detect URL column (might not always be column 0)
-  let urlCol = -1;
-  const headerParts = lines[0].match(/(".*?"|[^,\t]+)/g);
-  if (headerParts) {
-    for (let c = 0; c < headerParts.length; c++) {
-      const h = headerParts[c].replace(/"/g, '').trim().toLowerCase();
-      if (['url','page','landing page','address','top pages'].includes(h)) { urlCol = c; break; }
-    }
-  }
-  // Check first data row if header didn't reveal URL column
-  if (urlCol < 0 && lines.length > 1) {
-    const firstParts = lines[1].match(/(".*?"|[^,\t]+)/g);
-    if (firstParts) {
-      for (let c = 0; c < firstParts.length; c++) {
-        if (firstParts[c].replace(/"/g, '').trim().startsWith('http')) { urlCol = c; break; }
-      }
-    }
-  }
-  if (urlCol < 0) urlCol = 0; // default to first column
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const parts = lines[i].match(/(".*?"|[^,\t]+)/g);
-    if (!parts || parts.length < 3) continue;
-    const urlVal = (parts[urlCol] || '').replace(/^"|"$/g, '').trim();
-    if (!urlVal.startsWith('http')) continue;
-    // Collect numeric columns (skip the URL column)
-    const nums = [];
-    for (let c = 0; c < parts.length; c++) {
-      if (c === urlCol) continue;
-      const v = parts[c].replace(/"/g, '').replace('%', '').replace(/,/g, '.').replace(/\s/g, '').trim();
-      if (/^-?[\d.]+$/.test(v)) nums.push(parseFloat(v));
-    }
-    const row = { url: urlVal, clicks: nums[0] || 0, impressions: nums[1] || 0, ctr: nums[2] || 0 };
-    if (nums.length >= 4 && nums[3] > 0) row.position = nums[3];
-    rows.push(row);
-  }
-  return rows;
+  return rowsFromGrid(lines.map(splitCsvLine));
 }
 // Fallback parser for when proxy returns HTML (pubhtml) instead of CSV
 function parseHTMLTable(html) {
-  const rows = [];
   const trMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi);
   if (!trMatches || trMatches.length < 2) return [];
-  for (let i = 0; i < trMatches.length; i++) {
-    const tdMatches = trMatches[i].match(/<td[^>]*>[\s\S]*?<\/td>/gi);
+  const grid = [];
+  for (const tr of trMatches) {
+    const tdMatches = tr.match(/<td[^>]*>[\s\S]*?<\/td>/gi);
     if (!tdMatches || tdMatches.length < 3) continue;
     // Extract cell text, but also check for URLs in href attributes
-    const cells = tdMatches.map(td => {
+    grid.push(tdMatches.map(td => {
       // Check if there's a URL in an href attribute
       const hrefMatch = td.match(/href="(https?:\/\/[^"]+)"/i);
       const text = td.replace(/<[^>]*>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').trim();
       // Prefer href URL if text doesn't start with http
       if (hrefMatch && !text.startsWith('http')) return hrefMatch[1];
       return text;
-    });
-    let urlVal = '', urlIdx = -1;
-    for (let c = 0; c < cells.length; c++) {
-      if (cells[c].startsWith('http')) { urlVal = cells[c]; urlIdx = c; break; }
-    }
-    if (!urlVal) continue;
-    const nums = [];
-    for (let c = 0; c < cells.length; c++) {
-      if (c === urlIdx) continue;
-      const v = cells[c].replace(/[,%\s]/g, '').replace(/,/g, '.');
-      const n = parseFloat(v);
-      if (!isNaN(n)) nums.push(n);
-    }
-    rows.push({ url: urlVal, clicks: nums[0]||0, impressions: nums[1]||0, ctr: nums[2]||0, position: (nums.length >= 4 && nums[3] > 0) ? nums[3] : undefined });
+    }));
   }
-  return rows;
+  // No header row in the table: add an empty one so the first data row is kept
+  if (grid.length && grid[0].some(c => c.startsWith('http'))) grid.unshift([]);
+  return rowsFromGrid(grid);
 }
 
 const STOP_WORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','not','no','nor','so','if','up','out','about','into','over','after','le','la','les','de','du','des','un','une','et','en','au','aux','par','pour','sur','dans','ce','se','il','que','qui','son','sa','ses','cette','est','o','os','as','um','uma','do','da','dos','das','no','na','nos','nas','em','por','com','para','que','se','seu','sua','seus','suas','este','esta','el','los','las','del','al','con','como','pero','mas','mercato','transfer','news','football','soccer','latest','update','report','exclusive']);
 
 function extractTopicKeywords(title) {
   return title.toLowerCase()
-    .replace(/[''`]/g, "'")
+    .replace(/[‘’`]/g, "'")
     .replace(/[^\p{L}\p{N}' -]/gu, ' ')
     .split(/[\s-]+/)
     .filter(w => w.length > 2 && !STOP_WORDS.has(w));
@@ -5348,7 +5368,7 @@ function renderTopArticles(articles) {
     const shortPath = path.length > 70 ? path.slice(0, 67) + '...' : path;
     html += `<div style="font-size:12px;line-height:1.6;display:flex;gap:6px;align-items:baseline">
       <span style="color:var(--text-dim,#aaa);font-size:11px;min-width:14px">${i+1}.</span>
-      <a href="${r.url}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;word-break:break-all;flex:1" title="${r.url}">${shortPath}</a>
+      <a href="${safeUrl(r.url)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;word-break:break-all;flex:1" title="${esc(r.url)}">${esc(shortPath)}</a>
       <span style="white-space:nowrap;font-size:11px;color:var(--text-muted)">${r.clicks} clicks · ${r.impressions} imp</span>
     </div>`;
   });
@@ -5400,12 +5420,12 @@ function renderDiscoverInsights(d) {
   // ── Last 30 days paragraph ──
   if (isOn && d.site_stats) {
     const para30 = t('authority_para_on', { topic: d.topic, count: d.matching_count, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${para30}</p>`;
+    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
     html += buildComparisonTable(d, d.site_stats, 'Topic');
     html += renderTopArticles(d.top_articles);
   } else {
     const para30 = t('authority_para_off', { topic: d.topic, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${para30}</p>`;
+    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
   }
 
   // ── Last 10 days paragraph ──
@@ -5416,12 +5436,12 @@ function renderDiscoverInsights(d) {
     </div>`;
     if (d.match_10d.count > 0 && d.site_stats_10d) {
       const para10 = t('authority_para_on_10d', { topic: d.topic, count: d.match_10d.count, total: d.total_articles_10d });
-      html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${para10}</p>`;
+      html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para10)}</p>`;
       html += buildComparisonTable(d.match_10d, d.site_stats_10d, 'Topic');
       html += renderTopArticles(d.match_10d.top_articles);
     } else {
       const para10 = t('authority_para_off_10d', { topic: d.topic, total: d.total_articles_10d || 0 });
-      html += `<p style="color:var(--text);line-height:1.7;margin:0">${para10}</p>`;
+      html += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para10)}</p>`;
     }
     html += `</div>`;
   }
@@ -5536,12 +5556,12 @@ function renderSearchInsights(d) {
 
   if (isOn && d.site_stats) {
     const para = t('authority_search_para_on', { topic: d.topic, count: d.matching_count, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${para}</p>`;
+    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para)}</p>`;
     html += buildComparisonTable(d, d.site_stats, 'Topic');
     html += renderTopArticles(d.top_articles);
   } else {
     const para = t('authority_search_para_off', { topic: d.topic, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0">${para}</p>`;
+    html += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para)}</p>`;
   }
 
   body.innerHTML = html;
@@ -5729,7 +5749,7 @@ function renderKeywordResults(inputText, selectedSite, entityResults, angleIdeas
           const srcBadge = r.src === 'D' ? '<span style="font-size:10px;padding:1px 4px;border-radius:3px;background:var(--green-bg,#dcfce7);color:var(--green,#22c55e);margin-right:4px">D</span>' : '<span style="font-size:10px;padding:1px 4px;border-radius:3px;background:var(--accent-glow,#dbeafe);color:var(--accent);margin-right:4px">S</span>';
           const posText = r.position != null ? ` · pos ${r.position.toFixed(1)}` : '';
           cardHtml += `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">
-            <span style="display:flex;align-items:center;overflow:hidden">${srcBadge}<a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(path)}</a></span>
+            <span style="display:flex;align-items:center;overflow:hidden">${srcBadge}<a href="${safeUrl(r.url)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(path)}</a></span>
             <span style="white-space:nowrap;color:var(--text-muted)">${r.clicks.toLocaleString()} clicks · ${r.impressions.toLocaleString()} imp${posText}</span>
           </div>`;
         }
@@ -5772,7 +5792,7 @@ function renderKeywordResults(inputText, selectedSite, entityResults, angleIdeas
         const agoHtml = ago ? `<span style="color:var(--text-muted);font-size:11px">${esc(ago)}</span>` : '';
         const meta = [srcHtml, agoHtml].filter(Boolean);
         out += `<div style="padding:6px 10px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:13px;line-height:1.5">`;
-        if (h.link) out += `<a href="${esc(h.link)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-weight:500">${esc(h.title)}</a>`;
+        if (h.link) out += `<a href="${safeUrl(h.link)}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-weight:500">${esc(h.title)}</a>`;
         else out += `<span style="font-weight:500">${esc(h.title)}</span>`;
         if (meta.length > 0) out += `<div style="margin-top:2px">${meta.join(' · ')}</div>`;
         out += `</div>`;
@@ -5909,7 +5929,7 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
     { label: t('kpi_h2'), value: h2Count, color: h2Count>0?'green':'amber' },
   ];
   if (aiResult) {
-    kpis.push({ label: t('kpi_discover_ai'), value: (aiResult.discover?.score||'?') + '/100', color: (aiResult.discover?.score||0)>=70?'green':(aiResult.discover?.score||0)>=40?'amber':'red' });
+    kpis.push({ label: t('kpi_discover_ai'), value: (aiResult.discover?.score ?? '?') + '/100', color: (aiResult.discover?.score||0)>=70?'green':(aiResult.discover?.score||0)>=40?'amber':'red' });
     if (aiResult.search?.score_lisibilite_mot_cle != null)
       kpis.push({ label: t('kpi_seo'), value: aiResult.search.score_lisibilite_mot_cle + '/100', color: aiResult.search.score_lisibilite_mot_cle>=60?'green':aiResult.search.score_lisibilite_mot_cle>=30?'amber':'red' });
   }
@@ -5925,8 +5945,9 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
 
   const discoverColor = discoverOk===discoverTotal?'green':discoverOk>=discoverTotal-2?'amber':'red';
   document.getElementById('discoverCount').innerHTML = `<span class="tl-dot ${discoverColor}" style="width:8px;height:8px"></span> ${discoverOk}/${discoverTotal} OK`;
-  document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${c.label}</div><div class="check-detail">${c.detail}</div></div>`).join('');
-  document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${c.label}</div><div class="check-detail">${c.detail}</div></div>`).join('');
+  // Details embed values read from the analysed page (author, canonical, og:image...) — always escape
+  document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
+  document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
 
   const aiSection = document.getElementById('aiSection');
   if (ticks.doContent === false) { aiSection.style.display = 'none'; }
@@ -6224,7 +6245,7 @@ function renderAI(ai) {
   html += `<div class="ai-field"><div class="ai-field-label">${t('ai_justification')}</div><div class="ai-field-value">${esc(s.justification||'')}</div></div></div>`;
 
   html += `<div class="ai-subsection"><h4>${t('ai_discover_title')}</h4>
-    <div class="ai-field"><div class="ai-field-label">${t('ai_score')}</div><div class="ai-field-value" style="font-weight:700;font-size:20px;color:${d.score>=70?'var(--green)':d.score>=40?'var(--amber)':'var(--red)'}; display:flex; align-items:center; gap:8px"><span class="tl-dot ${d.score>=70?'green':d.score>=40?'amber':'red'}"></span>${d.score||'?'}/100</div></div>`;
+    <div class="ai-field"><div class="ai-field-label">${t('ai_score')}</div><div class="ai-field-value" style="font-weight:700;font-size:20px;color:${d.score>=70?'var(--green)':d.score>=40?'var(--amber)':'var(--red)'}; display:flex; align-items:center; gap:8px"><span class="tl-dot ${d.score>=70?'green':d.score>=40?'amber':'red'}"></span>${d.score ?? '?'}/100</div></div>`;
   if (d.points_forts?.length) html += `<div class="ai-field" style="flex-direction:column;gap:4px"><div class="ai-field-label">${t('ai_strengths')}</div><ul class="points-list forts">${d.points_forts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul></div>`;
   if (d.points_faibles?.length) html += `<div class="ai-field" style="flex-direction:column;gap:4px"><div class="ai-field-label">${t('ai_weaknesses')}</div><ul class="points-list faibles">${d.points_faibles.map(p=>`<li>${esc(p)}</li>`).join('')}</ul></div>`;
   if (d.titre_suggestions?.length) {
@@ -6640,7 +6661,10 @@ function generatePdf() {
   });
 }
 
-function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+// Escapes quotes too, so the result is safe inside attribute values (href, title...)
+function esc(str) { return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+// Only http(s) links are kept for href attributes; anything else (javascript:, data:...) becomes '#'
+function safeUrl(u) { const s = String(u ?? '').trim(); return /^https?:\/\//i.test(s) ? esc(s) : '#'; }
 function decodeEntities(s) { const el = document.createElement('textarea'); el.innerHTML = s; return el.value; }
 
 // ========== CROSS-SITE EXTRACTION TEST ==========
@@ -7064,20 +7088,20 @@ function renderEvergreenResults(proposals, siteLabel, suggestions, authority, si
       </div>
       <div class="ev-card-body">
         <div class="ev-meta-row">
-          <span class="ev-meta-tag format">${formatLabels[p.format] || p.format}</span>
-          <span class="ev-meta-tag intent">${intentLabels[p.search_intent] || p.search_intent}</span>
-          <span class="ev-meta-tag cycle">${cycleLabels[p.update_cycle] || p.update_cycle}</span>
-          <span class="ev-meta-tag words">${p.word_count_estimate} ${t('ev_words')}</span>
-          <span class="ev-meta-tag score" style="background:${scoreColor}">Long-tail: ${p.long_tail_score}/10</span>
+          <span class="ev-meta-tag format">${esc(formatLabels[p.format] || p.format)}</span>
+          <span class="ev-meta-tag intent">${esc(intentLabels[p.search_intent] || p.search_intent)}</span>
+          <span class="ev-meta-tag cycle">${esc(cycleLabels[p.update_cycle] || p.update_cycle)}</span>
+          <span class="ev-meta-tag words">${esc(p.word_count_estimate)} ${t('ev_words')}</span>
+          <span class="ev-meta-tag score" style="background:${scoreColor}">Long-tail: ${esc(p.long_tail_score)}/10</span>
         </div>
         <div class="ev-data-row">
           <div class="ev-data-chip">
             <span class="ev-data-label">${t('ev_volume')}</span>
-            <span class="ev-data-value" style="color:${volColor}">${p.estimated_volume || '?'} /mo</span>
+            <span class="ev-data-value" style="color:${volColor}">${esc(p.estimated_volume || '?')} /mo</span>
           </div>
           <div class="ev-data-chip">
             <span class="ev-data-label">${t('ev_difficulty')}</span>
-            <span class="ev-data-value" style="color:${diffColor}">${diffLabels[p.difficulty] || p.difficulty}</span>
+            <span class="ev-data-value" style="color:${diffColor}">${esc(diffLabels[p.difficulty] || p.difficulty)}</span>
           </div>
         </div>${evTicks.timing && p.best_timing ? `
         <div class="ev-timing-row">📅 <strong>${t('ev_best_timing')}:</strong> ${esc(p.best_timing)}</div>` : ''}
@@ -7112,7 +7136,7 @@ function renderEvergreenResults(proposals, siteLabel, suggestions, authority, si
         matches.forEach(m => {
           const path = m.url.replace(/https?:\/\/[^/]+/, '');
           html += `<li class="ev-similar-item">
-            <a href="${esc(m.url)}" target="_blank" rel="noopener" class="ev-similar-url">${esc(path)}</a>
+            <a href="${safeUrl(m.url)}" target="_blank" rel="noopener" class="ev-similar-url">${esc(path)}</a>
             <span class="ev-similar-stats">${m.clicks || 0} ${t('ev_similar_clicks')} · ${m.impressions || 0} ${t('ev_similar_impr')}</span>
           </li>`;
         });
@@ -7134,7 +7158,7 @@ function renderEvergreenResults(proposals, siteLabel, suggestions, authority, si
         links.forEach(m => {
           const path = m.url.replace(/https?:\/\/[^/]+/, '');
           html += `<li class="ev-similar-item">
-            <a href="${esc(m.url)}" target="_blank" rel="noopener" class="ev-similar-url">${esc(path)}</a>
+            <a href="${safeUrl(m.url)}" target="_blank" rel="noopener" class="ev-similar-url">${esc(path)}</a>
             <span class="ev-similar-stats">${m.clicks || 0} ${t('ev_similar_clicks')} · ${m.impressions || 0} ${t('ev_similar_impr')}</span>
           </li>`;
         });
@@ -7158,7 +7182,7 @@ function renderEvergreenResults(proposals, siteLabel, suggestions, authority, si
             <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 <span class="ev-competitor-domain">${esc(compSource)}</span>
-                <a href="${esc(compUrl)}" target="_blank" rel="noopener" class="ev-similar-url" style="white-space:normal">${esc(compTitle)}</a>
+                <a href="${safeUrl(compUrl)}" target="_blank" rel="noopener" class="ev-similar-url" style="white-space:normal">${esc(compTitle)}</a>
               </div>
               <span class="ev-competitor-note">${esc(compAngle)}</span>
             </div>
