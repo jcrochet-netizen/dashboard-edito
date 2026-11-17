@@ -547,6 +547,8 @@ body {
 .img-checks .check-detail a { color: var(--accent); word-break: break-all; }
 .img-tips { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
 .img-tips ul { margin: 6px 0 0 18px; }
+.img-tips li { margin-bottom: 4px; }
+.img-score-lost { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
 .img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
 @media (max-width: 640px) { .img-report { grid-template-columns: 1fr; } }
 
@@ -1707,7 +1709,7 @@ const T = {
     img_no_bytes_hint: "File size, real format and text coverage need the image file: check your access code in Settings, or upload the file in the Image Discover tab.",
     img_boxes_legend: "Red boxes: text detected on the image.",
     img_ai_title: "AI photo review",
-    img_ai_score: "Discover appeal",
+    img_ai_score: "Discover score",
     img_ai_tips: "Suggestions",
     img_emotion_label: "Emotion",
     img_emotion_strong: "Strong emotion",
@@ -1716,6 +1718,13 @@ const T = {
     img_people_label: "People in frame",
     img_people_none: "No one in frame",
     img_people_single: "One person",
+    img_bg_label: "Background",
+    img_bg_clean: "Clean",
+    img_bg_busy: "Busy",
+    img_bg_distracting: "Distracting",
+    img_score_lost: "Points lost",
+    img_score_none: "No points lost",
+    img_score_hint: "Computed by the page: 100 minus the points lost on each criterion.",
     img_people_duo: "Two people",
     img_people_small_group: "Small group",
     img_people_crowded: "Too many people",
@@ -2066,7 +2075,7 @@ const T = {
     img_no_bytes_hint: "Le poids, le format réel et la part de texte demandent le fichier de l'image : vérifiez votre code d'accès dans les Paramètres, ou importez le fichier dans l'onglet Image Discover.",
     img_boxes_legend: "Cadres rouges : texte détecté sur l'image.",
     img_ai_title: "Avis IA sur la photo",
-    img_ai_score: "Attractivité Discover",
+    img_ai_score: "Note Discover",
     img_ai_tips: "Suggestions",
     img_emotion_label: "Émotion",
     img_emotion_strong: "Émotion forte",
@@ -2075,6 +2084,13 @@ const T = {
     img_people_label: "Personnes à l'image",
     img_people_none: "Personne à l'image",
     img_people_single: "Une personne",
+    img_bg_label: "Arrière-plan",
+    img_bg_clean: "Propre",
+    img_bg_busy: "Chargé",
+    img_bg_distracting: "Gênant",
+    img_score_lost: "Points retirés",
+    img_score_none: "Aucun point retiré",
+    img_score_hint: "Calculée par la page : 100 moins les points retirés pour chaque critère.",
     img_people_duo: "Deux personnes",
     img_people_small_group: "Petit groupe",
     img_people_crowded: "Trop de monde",
@@ -2407,7 +2423,7 @@ const T = {
     img_no_bytes_hint: "Peso, formato real e proporção de texto exigem o arquivo da imagem: verifique seu código de acesso nas Configurações ou envie o arquivo na aba Imagem Discover.",
     img_boxes_legend: "Caixas vermelhas: texto detectado na imagem.",
     img_ai_title: "Avaliação da foto por IA",
-    img_ai_score: "Atratividade no Discover",
+    img_ai_score: "Nota Discover",
     img_ai_tips: "Sugestões",
     img_emotion_label: "Emoção",
     img_emotion_strong: "Emoção forte",
@@ -2416,6 +2432,13 @@ const T = {
     img_people_label: "Pessoas na imagem",
     img_people_none: "Nenhuma pessoa na imagem",
     img_people_single: "Uma pessoa",
+    img_bg_label: "Fundo",
+    img_bg_clean: "Limpo",
+    img_bg_busy: "Carregado",
+    img_bg_distracting: "Atrapalha",
+    img_score_lost: "Pontos perdidos",
+    img_score_none: "Nenhum ponto perdido",
+    img_score_hint: "Calculada pela página: 100 menos os pontos perdidos em cada critério.",
     img_people_duo: "Duas pessoas",
     img_people_small_group: "Grupo pequeno",
     img_people_crowded: "Gente demais",
@@ -2766,7 +2789,7 @@ const T = {
     img_no_bytes_hint: "El peso, el formato real y la proporción de texto requieren el archivo de la imagen: revisa tu código de acceso en Ajustes o sube el archivo en la pestaña Imagen Discover.",
     img_boxes_legend: "Recuadros rojos: texto detectado en la imagen.",
     img_ai_title: "Revisión de la foto por IA",
-    img_ai_score: "Atractivo en Discover",
+    img_ai_score: "Nota Discover",
     img_ai_tips: "Sugerencias",
     img_emotion_label: "Emoción",
     img_emotion_strong: "Emoción fuerte",
@@ -2775,6 +2798,13 @@ const T = {
     img_people_label: "Personas en la imagen",
     img_people_none: "Nadie en la imagen",
     img_people_single: "Una persona",
+    img_bg_label: "Fondo",
+    img_bg_clean: "Limpio",
+    img_bg_busy: "Recargado",
+    img_bg_distracting: "Molesto",
+    img_score_lost: "Puntos restados",
+    img_score_none: "Ningún punto restado",
+    img_score_hint: "Calculada por la página: 100 menos los puntos restados en cada criterio.",
     img_people_duo: "Dos personas",
     img_people_small_group: "Grupo pequeño",
     img_people_crowded: "Demasiada gente",
@@ -3617,7 +3647,7 @@ async function runImageAI(imageUrl) {
   const data = await callOpenAI({
     model: OPENAI_MODEL,
     messages: [
-      { role: 'system', content: `You are the photo editor of a network of sports news sites. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject, and penalises crowded scenes, logos, watermarks and text written on the image. Answer ONLY through the image_report tool. Write every comment, the summary and the suggestions in ${langName}.` },
+      { role: 'system', content: `You are the photo editor of a network of sports news sites, and a demanding one. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject that stands out from a clean background, and penalises crowded scenes, logos, watermarks and text written on the image. The background matters: giant lettering, logo walls, sponsor boards or busy patterns behind the subject compete with it, even when that text belongs to the scene. The page computes the score from your categories, so any problem you would fix with high impact must show in a category, not only in the suggestions. Answer ONLY through the image_report tool. Write every comment, the summary and the suggestions in ${langName}.` },
       { role: 'user', content: [
         { type: 'text', text: 'Review this lead image for Google Discover.' },
         { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } }
@@ -3638,20 +3668,24 @@ async function runImageAI(imageUrl) {
               count: { type: 'integer', description: 'People clearly visible (players, coaches, fans in focus); ignore a blurred crowd in the background' },
               framing: { type: 'string', enum: ['none', 'single', 'duo', 'small_group', 'crowded'], description: 'none = nobody (stadium, ball, logo), single = 1, duo = 2, small_group = 3-4, crowded = 5 or more' },
               comment: { type: 'string' } }, required: ['count', 'framing', 'comment'] },
+            background: { type: 'object', properties: {
+              status: { type: 'string', enum: ['clean', 'busy', 'distracting'], description: 'clean = plain or blurred background, the subject clearly stands out; busy = some clutter but the subject still reads at a glance; distracting = large lettering, logos, sponsor boards, crowd or strong patterns compete with the subject, or the subject blends into the background' },
+              comment: { type: 'string' } }, required: ['status', 'comment'] },
             sharpness: { type: 'object', properties: {
               status: { type: 'string', enum: ['sharp', 'soft', 'blurry_or_pixelated'], description: 'Judge the main subject: a blurred background behind a sharp subject is sharp' },
               comment: { type: 'string' } }, required: ['status', 'comment'] },
             text_overlay: { type: 'object', properties: {
-              kind: { type: 'string', enum: ['none', 'incidental', 'logo_or_watermark', 'headline_overlay'], description: 'incidental = text that is part of the scene (shirts, sponsor boards, stadium signs); headline_overlay = words added on top of the photo' },
+              kind: { type: 'string', enum: ['none', 'incidental', 'logo_or_watermark', 'headline_overlay'], description: 'incidental = text that is part of the scene (shirts, sponsor boards, stadium signs; if it dominates the background, also rate the background distracting); headline_overlay = words added on top of the photo' },
               comment: { type: 'string' } }, required: ['kind', 'comment'] },
             crop_16_9: { type: 'object', properties: {
               safe: { type: 'boolean', description: 'The main subject (faces included) stays whole in a centred 16:9 crop' },
               comment: { type: 'string' } }, required: ['safe', 'comment'] },
-            score: { type: 'integer', description: '0-100: how likely the image is to earn taps in Discover' },
             summary: { type: 'string', description: 'One or two sentences' },
-            suggestions: { type: 'array', items: { type: 'string' }, description: 'Up to 3 concrete improvements, empty if none' }
+            suggestions: { type: 'array', description: 'Up to 3 concrete improvements, most important first, empty if none', items: { type: 'object', properties: {
+              text: { type: 'string' },
+              impact: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Expected effect on Discover taps' } }, required: ['text', 'impact'] } }
           },
-          required: ['emotion', 'people', 'sharpness', 'text_overlay', 'crop_16_9', 'score', 'summary', 'suggestions']
+          required: ['emotion', 'people', 'background', 'sharpness', 'text_overlay', 'crop_16_9', 'summary', 'suggestions']
         }
       }
     }],
@@ -3731,12 +3765,43 @@ function imageChecks(rep) {
   return checks;
 }
 
+// Points lost per criterion — internal choices, not Google figures. The page computes the score itself
+// so it always matches the rows shown (GPT-4o's own score ignored problems it listed in its suggestions)
+const IMG_PENALTIES = {
+  emotion: { moderate: 15, none: 30 },
+  people: { small_group: 10, none: 15, crowded: 25 },
+  background: { busy: 10, distracting: 25 },
+  sharpness: { soft: 15, blurry_or_pixelated: 35 },
+  overlay: { logo_or_watermark: 15, headline_overlay: 30 },
+  crop: 10, width: 30, ratio: 10, textWarn: 10, textFail: 25
+};
+
+function imageDiscoverScore(rep) {
+  const ai = rep.ai, P = IMG_PENALTIES, lost = [];
+  const add = (label, pts) => { if (pts) lost.push({ label, pts }); };
+  add(t('img_emotion_' + ai.emotion?.level), P.emotion[ai.emotion?.level]);
+  add(t('img_people_label') + ' : ' + t('img_people_' + ai.people?.framing), P.people[ai.people?.framing]);
+  add(t('img_bg_label') + ' : ' + t('img_bg_' + ai.background?.status), P.background[ai.background?.status]);
+  add(t('img_sharp_label') + ' : ' + t('img_sharp_' + ai.sharpness?.status), P.sharpness[ai.sharpness?.status]);
+  add(t('img_overlay_' + ai.text_overlay?.kind), P.overlay[ai.text_overlay?.kind]);
+  if (ai.crop_16_9?.safe === false) add(t('img_crop_bad'), P.crop);
+  if (rep.width < IMG_MIN_WIDTH) add(t('img_dim_label') + ' < ' + IMG_MIN_WIDTH + ' px', P.width);
+  const r = rep.width / rep.height;
+  if (r < 1.3 || r > 2.0) add(t('img_ratio_label') + ' ' + ratioLabel(rep.width, rep.height), P.ratio);
+  const pct = rep.ocr && !rep.ocr.error ? rep.ocr.percent : 0;
+  if (pct > IMG_TEXT_FAIL) add(t('img_text_label') + ' ' + pct + ' %', P.textFail);
+  else if (pct > IMG_TEXT_WARN) add(t('img_text_label') + ' ' + pct + ' %', P.textWarn);
+  const score = Math.max(0, 100 - lost.reduce((a, l) => a + l.pts, 0));
+  return { score, lost, status: score >= 75 ? 'ok' : score >= 50 ? 'warning' : 'fail' };
+}
+
 function imageAiChecks(ai) {
   const row = (label, status, value, comment) => ({ label, status, detail: value + (comment ? ' — ' + comment : '') });
-  const emo = ai.emotion?.level, fr = ai.people?.framing, sh = ai.sharpness?.status, ov = ai.text_overlay?.kind;
+  const emo = ai.emotion?.level, fr = ai.people?.framing, bg = ai.background?.status, sh = ai.sharpness?.status, ov = ai.text_overlay?.kind;
   return [
     row(t('img_emotion_label'), { strong: 'ok', moderate: 'warning' }[emo] || 'fail', t('img_emotion_' + (emo || 'none')), ai.emotion?.comment),
     row(t('img_people_label'), { single: 'ok', duo: 'ok', small_group: 'warning', none: 'warning' }[fr] || 'fail', t('img_people_' + (fr || 'crowded')) + (ai.people?.count != null ? ' (' + ai.people.count + ')' : ''), ai.people?.comment),
+    row(t('img_bg_label'), { clean: 'ok', busy: 'warning' }[bg] || 'fail', t('img_bg_' + (bg || 'distracting')), ai.background?.comment),
     row(t('img_sharp_label'), { sharp: 'ok', soft: 'warning' }[sh] || 'fail', t('img_sharp_' + (sh || 'blurry_or_pixelated')), ai.sharpness?.comment),
     row(t('img_overlay_label'), { none: 'ok', incidental: 'ok', logo_or_watermark: 'warning' }[ov] || 'fail', t('img_overlay_' + (ov || 'headline_overlay')), ai.text_overlay?.comment),
     row(t('img_crop_label'), ai.crop_16_9?.safe ? 'ok' : 'warning', t(ai.crop_16_9?.safe ? 'img_crop_ok' : 'img_crop_bad'), ai.crop_16_9?.comment),
@@ -3753,12 +3818,17 @@ function renderImageReport(el, rep, countEl) {
   if (rep.loadError) { el.innerHTML = `<div class="ai-unavailable">${t('img_load_error')} <span class="ai-unavailable-detail">${esc(rep.src || rep.fileName)}</span></div>`; return; }
 
   const checks = imageChecks(rep);
-  const aiChecks = rep.ai && !rep.ai.error ? imageAiChecks(rep.ai) : [];
-  const all = checks.concat(aiChecks);
-  const okCount = all.filter(c => c.status === 'ok').length;
-  if (countEl) {
-    const color = okCount === all.length ? 'green' : okCount >= all.length - 2 ? 'amber' : 'red';
-    countEl.innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${okCount}/${all.length} OK`;
+  const hasAi = rep.ai && !rep.ai.error;
+  const aiChecks = hasAi ? imageAiChecks(rep.ai) : [];
+  const verdict = hasAi ? imageDiscoverScore(rep) : null;
+  if (countEl && verdict) {
+    const color = { ok: 'green', warning: 'amber', fail: 'red' }[verdict.status];
+    countEl.innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${verdict.score}/100`;
+  } else if (countEl) {
+    // Without the AI review there is no score: fall back to the number of green checks
+    const okCount = checks.filter(c => c.status === 'ok').length;
+    const color = okCount === checks.length ? 'green' : okCount >= checks.length - 2 ? 'amber' : 'red';
+    countEl.innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${okCount}/${checks.length} OK`;
   }
 
   const sourceLabel = t('img_origin_' + rep.origin);
@@ -3780,14 +3850,19 @@ function renderImageReport(el, rep, countEl) {
   if (rep.noBytes) html += `<div class="ai-unavailable" style="margin-top:12px">${t('img_no_bytes_hint')}</div>`;
 
   html += `<div class="ai-subsection" style="margin-top:16px"><h4>${t('img_ai_title')} <span class="ai-badge">GPT-4o</span></h4>`;
-  if (!rep.ai || rep.ai.error) {
+  if (!hasAi) {
     html += `<div class="ai-unavailable">${t('ai_unavailable')}${rep.ai?.error ? ' <span class="ai-unavailable-detail">(' + esc(rep.ai.error) + ')</span>' : ''}</div>`;
   } else {
-    const score = Number.isFinite(rep.ai.score) ? rep.ai.score : null;
-    const scoreStatus = score == null ? 'a_verifier' : score >= 70 ? 'ok' : score >= 40 ? 'warning' : 'fail';
-    html += checkRowsHtml([{ label: t('img_ai_score'), status: scoreStatus, detail: (score ?? '?') + '/100' + (rep.ai.summary ? ' — ' + rep.ai.summary : '') }].concat(aiChecks));
-    const tips = (rep.ai.suggestions || []).filter(Boolean);
-    if (tips.length) html += `<div class="img-tips"><strong>${t('img_ai_tips')}</strong><ul>${tips.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
+    const lostText = verdict.lost.length
+      ? t('img_score_lost') + ' : ' + verdict.lost.map(l => `${l.label} −${l.pts}`).join(' · ')
+      : t('img_score_none');
+    html += `<div class="check-row"><div class="status-dot ${verdict.status}"></div><div class="check-label">${esc(t('img_ai_score'))}</div><div class="check-detail"><strong>${verdict.score}/100</strong>${rep.ai.summary ? ' — ' + esc(rep.ai.summary) : ''}<div class="img-score-lost">${esc(lostText)}</div><div class="img-score-lost">${esc(t('img_score_hint'))}</div></div></div>`;
+    html += checkRowsHtml(aiChecks);
+    const rank = { high: 0, medium: 1, low: 2 };
+    const tips = (rep.ai.suggestions || []).filter(s => s && (s.text || typeof s === 'string'))
+      .map(s => typeof s === 'string' ? { text: s } : s)
+      .sort((a, b) => (rank[a.impact] ?? 3) - (rank[b.impact] ?? 3));
+    if (tips.length) html += `<div class="img-tips"><strong>${t('img_ai_tips')}</strong><ul>${tips.map(s => `<li>${rank[s.impact] != null ? `<span class="fluff-severity ${s.impact}">${t('fluff_severity_' + s.impact)}</span> ` : ''}${esc(s.text)}</li>`).join('')}</ul></div>`;
   }
   html += `</div>`;
   el.innerHTML = html;
