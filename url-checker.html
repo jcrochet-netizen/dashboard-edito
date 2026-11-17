@@ -536,6 +536,20 @@ body {
 }
 .check-detail { color: var(--text-muted); flex: 1; }
 
+/* IMAGE DISCOVER */
+.img-report { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 20px; align-items: start; padding-top: 8px; }
+.img-preview { margin: 0; }
+.img-frame { position: relative; line-height: 0; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); }
+.img-frame img { width: 100%; height: auto; display: block; }
+.img-ocr-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.img-ocr-overlay rect { fill: var(--red); fill-opacity: 0.25; stroke: var(--red); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.img-preview figcaption { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
+.img-checks .check-detail a { color: var(--accent); word-break: break-all; }
+.img-tips { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+.img-tips ul { margin: 6px 0 0 18px; }
+.img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
+@media (max-width: 640px) { .img-report { grid-template-columns: 1fr; } }
+
 /* KPI ROW */
 .kpi-row {
   display: grid;
@@ -1098,6 +1112,7 @@ body {
       <button class="mode-tab" onclick="switchMode('url')" data-mode="url" data-t="tab_url">Check URL</button>
       <button class="mode-tab" onclick="switchMode('html')" data-mode="html" data-t="tab_draft">Check Draft</button>
       <button class="mode-tab" onclick="switchMode('evergreen')" data-mode="evergreen" data-t="tab_evergreen">Evergreen</button>
+      <button class="mode-tab" onclick="switchMode('image')" data-mode="image" data-t="tab_image">Image Discover</button>
     </div>
 
     <div class="mode-panel active" id="panelKeyword">
@@ -1130,6 +1145,7 @@ body {
       <div class="tick-row" id="urlTicks">
         <label class="tick-chip select-all"><input type="checkbox" id="urlTickAll" checked onchange="toggleSelectAll('urlTicks',this.checked)"> <span data-t="tick_select_all">Select All</span></label>
         <label class="tick-chip"><input type="checkbox" id="urlTickContent" checked> <span data-t="tick_content">Content Analysis</span></label>
+        <label class="tick-chip"><input type="checkbox" id="urlTickImage" checked> <span data-t="tick_image">Image Discover</span></label>
         <label class="tick-chip"><input type="checkbox" id="urlTickSpell" checked> <span data-t="tick_spell">Spell Check</span></label>
         <label class="tick-chip"><input type="checkbox" id="urlTickQuality" checked> <span data-t="tick_quality">Google Quality Rater</span></label>
         <label class="tick-chip"><input type="checkbox" id="urlTickDiscoverAuth" checked> <span data-t="tick_discover_auth">Discover Authority</span></label>
@@ -1152,6 +1168,7 @@ body {
       <div class="tick-row" id="draftTicks">
         <label class="tick-chip select-all"><input type="checkbox" id="draftTickAll" checked onchange="toggleSelectAll('draftTicks',this.checked)"> <span data-t="tick_select_all">Select All</span></label>
         <label class="tick-chip"><input type="checkbox" id="draftTickContent" checked> <span data-t="tick_content">Content Analysis</span></label>
+        <label class="tick-chip"><input type="checkbox" id="draftTickImage" checked> <span data-t="tick_image">Image Discover</span></label>
         <label class="tick-chip"><input type="checkbox" id="draftTickSpell" checked> <span data-t="tick_spell">Spell Check</span></label>
         <label class="tick-chip"><input type="checkbox" id="draftTickQuality" checked> <span data-t="tick_quality">Google Quality Rater</span></label>
         <label class="tick-chip"><input type="checkbox" id="draftTickDiscoverAuth" checked> <span data-t="tick_discover_auth">Discover Authority</span></label>
@@ -1180,6 +1197,18 @@ body {
       <button class="btn" id="analyzeBtnEv" onclick="startAnalysis('evergreen')" style="width:100%">
         <span id="btnTextEv" data-t="btn_check_ev">Generate Evergreen Proposals</span>
         <div class="spinner" id="btnSpinnerEv" style="display:none"></div>
+      </button>
+    </div>
+
+    <div class="mode-panel" id="panelImage">
+      <div class="input-row">
+        <input type="text" id="imgUrlInput" data-t-placeholder="img_url_placeholder" placeholder="https://www.example.com/photo.jpg" autocomplete="url">
+      </div>
+      <label class="img-file-label"><span data-t="img_file_label">Or upload an image</span> <input type="file" id="imgFileInput" accept="image/*"></label>
+      <p class="draft-hint" data-t="img_hint">Checks size, format, file weight and text coverage, then asks GPT-4o about emotion, people in frame and sharpness. An uploaded file takes priority over the URL.</p>
+      <button class="btn" id="analyzeBtnImg" onclick="startAnalysis('image')" style="width:100%">
+        <span id="btnTextImg" data-t="btn_check_img">Analyze image</span>
+        <div class="spinner" id="btnSpinnerImg" style="display:none"></div>
       </button>
     </div>
   </div>
@@ -1211,6 +1240,13 @@ body {
         <span class="chevron">▼</span>
       </div>
       <div class="card-body" id="discoverBody"></div>
+    </div>
+    <div class="card" id="imageCard" style="display:none">
+      <div class="card-header" onclick="toggleCard(this)">
+        <h3>🖼️ <span data-t="img_title">Lead image (Discover)</span> <span class="count" id="imageCount"></span></h3>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body" id="imageBody"></div>
     </div>
     <div class="card" id="discoverInsightsCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
@@ -1273,6 +1309,8 @@ body {
   <div class="results" id="kwResults" style="display:none"></div>
 
   <div class="results" id="evResults" style="display:none"></div>
+
+  <div class="results" id="imgResults" style="display:none"></div>
 
 </div>
 
@@ -1630,6 +1668,69 @@ const T = {
     kw_summary: "Checked {topics} topic(s) across {articles} Discover articles on {site}.",
     // Evergreen tab
     tab_evergreen: "Evergreen",
+    tab_image: "Image Discover",
+    img_url_placeholder: "https://www.example.com/photo.jpg",
+    img_file_label: "Or upload an image:",
+    img_hint: "Checks size, format, file weight and text coverage, then asks GPT-4o about emotion, people in frame and sharpness. An uploaded file takes priority over the URL.",
+    btn_check_img: "Analyze image",
+    err_empty_img: "Enter an image URL or choose a file.",
+    prog_img: "Analyzing the lead image (format, text, AI)...",
+    tick_image: "Image Discover",
+    img_title: "Lead image (Discover)",
+    img_source: "Image",
+    img_origin_og: "og:image",
+    img_origin_twitter: "twitter:image",
+    img_origin_content: "first image in the article",
+    img_origin_file: "uploaded file",
+    img_origin_url: "URL",
+    img_none: "No lead image found on the page (og:image, twitter:image or <img>).",
+    img_load_error: "The image could not be loaded.",
+    img_dim_label: "Dimensions",
+    img_dim_ok: "{w} × {h} px — wide enough for large Discover cards.",
+    img_dim_small: "{w} × {h} px — Discover needs at least 1200 px of width for large images.",
+    img_ratio_label: "Aspect ratio",
+    img_ratio_ok: "{ratio} — landscape, fits Discover cards.",
+    img_ratio_bad: "{ratio} — Discover shows landscape images: the subject may be cropped.",
+    img_format_label: "File format",
+    img_format_ok: "{format}",
+    img_format_warn: "{format} — prefer JPEG, WebP or AVIF for a photo.",
+    img_weight_label: "File size",
+    img_weight_ok: "{size}",
+    img_weight_heavy: "{size} — heavy, slows the page down (aim for under 500 KB).",
+    img_unknown: "Not available: the image file could not be downloaded.",
+    img_text_label: "Text on the image",
+    img_text_none: "No text detected.",
+    img_text_ok: "{pct}% of the image is covered by text.",
+    img_text_warn: "{pct}% of the image is covered by text — keep it under 10%.",
+    img_text_fail: "{pct}% of the image is covered by text — too much for Discover (over 20%).",
+    img_ocr_error: "Text measurement failed: {msg}",
+    img_no_bytes_hint: "File size, real format and text coverage need the image file: check your access code in Settings, or upload the file in the Image Discover tab.",
+    img_boxes_legend: "Red boxes: text detected on the image.",
+    img_ai_title: "AI photo review",
+    img_ai_score: "Discover appeal",
+    img_ai_tips: "Suggestions",
+    img_emotion_label: "Emotion",
+    img_emotion_strong: "Strong emotion",
+    img_emotion_moderate: "Moderate emotion",
+    img_emotion_none: "No visible emotion",
+    img_people_label: "People in frame",
+    img_people_none: "No one in frame",
+    img_people_single: "One person",
+    img_people_duo: "Two people",
+    img_people_small_group: "Small group",
+    img_people_crowded: "Too many people",
+    img_sharp_label: "Sharpness",
+    img_sharp_sharp: "Sharp",
+    img_sharp_soft: "Slightly soft",
+    img_sharp_blurry_or_pixelated: "Blurry or pixelated",
+    img_overlay_label: "Overlay text / logo",
+    img_overlay_none: "None",
+    img_overlay_incidental: "Only text from the scene (shirts, boards)",
+    img_overlay_logo_or_watermark: "Logo or watermark",
+    img_overlay_headline_overlay: "Text added on the photo",
+    img_crop_label: "16:9 crop",
+    img_crop_ok: "Main subject survives a 16:9 crop",
+    img_crop_bad: "Main subject at risk in a 16:9 crop",
     ev_site_label: "Site",
     ev_placeholder: "Enter a keyword or article idea... e.g. 'Champions League all-time top scorers' or 'How does the FIFA ranking work?'",
     btn_check_ev: "Generate Evergreen Proposals",
@@ -1926,6 +2027,69 @@ const T = {
     kw_no_match: "Aucun article correspondant dans les donnees.",
     kw_summary: "{topics} sujet(s) verifies parmi {articles} articles Discover sur {site}.",
     tab_evergreen: "Evergreen",
+    tab_image: "Image Discover",
+    img_url_placeholder: "https://www.exemple.com/photo.jpg",
+    img_file_label: "Ou importez une image :",
+    img_hint: "Vérifie la taille, le format, le poids et la part de texte, puis demande à GPT-4o d'évaluer l'émotion, le nombre de personnes et la netteté. Un fichier importé passe avant l'URL.",
+    btn_check_img: "Analyser l'image",
+    err_empty_img: "Saisissez l'URL d'une image ou choisissez un fichier.",
+    prog_img: "Analyse de l'image (format, texte, IA)...",
+    tick_image: "Image Discover",
+    img_title: "Image d'illustration (Discover)",
+    img_source: "Image",
+    img_origin_og: "og:image",
+    img_origin_twitter: "twitter:image",
+    img_origin_content: "première image de l'article",
+    img_origin_file: "fichier importé",
+    img_origin_url: "URL",
+    img_none: "Aucune image d'illustration trouvée (og:image, twitter:image ou <img>).",
+    img_load_error: "Impossible de charger l'image.",
+    img_dim_label: "Dimensions",
+    img_dim_ok: "{w} × {h} px — assez large pour les grandes cartes Discover.",
+    img_dim_small: "{w} × {h} px — Discover demande au moins 1200 px de large pour les grandes images.",
+    img_ratio_label: "Proportions",
+    img_ratio_ok: "{ratio} — paysage, adapté aux cartes Discover.",
+    img_ratio_bad: "{ratio} — Discover affiche des images en paysage : le sujet risque d'être coupé.",
+    img_format_label: "Format du fichier",
+    img_format_ok: "{format}",
+    img_format_warn: "{format} — préférez JPEG, WebP ou AVIF pour une photo.",
+    img_weight_label: "Poids",
+    img_weight_ok: "{size}",
+    img_weight_heavy: "{size} — lourd, ralentit la page (visez moins de 500 Ko).",
+    img_unknown: "Indisponible : le fichier de l'image n'a pas pu être récupéré.",
+    img_text_label: "Texte sur l'image",
+    img_text_none: "Aucun texte détecté.",
+    img_text_ok: "{pct} % de l'image est couverte de texte.",
+    img_text_warn: "{pct} % de l'image est couverte de texte — restez sous 10 %.",
+    img_text_fail: "{pct} % de l'image est couverte de texte — trop pour Discover (plus de 20 %).",
+    img_ocr_error: "La mesure du texte a échoué : {msg}",
+    img_no_bytes_hint: "Le poids, le format réel et la part de texte demandent le fichier de l'image : vérifiez votre code d'accès dans les Paramètres, ou importez le fichier dans l'onglet Image Discover.",
+    img_boxes_legend: "Cadres rouges : texte détecté sur l'image.",
+    img_ai_title: "Avis IA sur la photo",
+    img_ai_score: "Attractivité Discover",
+    img_ai_tips: "Suggestions",
+    img_emotion_label: "Émotion",
+    img_emotion_strong: "Émotion forte",
+    img_emotion_moderate: "Émotion modérée",
+    img_emotion_none: "Pas d'émotion visible",
+    img_people_label: "Personnes à l'image",
+    img_people_none: "Personne à l'image",
+    img_people_single: "Une personne",
+    img_people_duo: "Deux personnes",
+    img_people_small_group: "Petit groupe",
+    img_people_crowded: "Trop de monde",
+    img_sharp_label: "Netteté",
+    img_sharp_sharp: "Nette",
+    img_sharp_soft: "Un peu douce",
+    img_sharp_blurry_or_pixelated: "Floue ou pixelisée",
+    img_overlay_label: "Texte incrusté / logo",
+    img_overlay_none: "Aucun",
+    img_overlay_incidental: "Seulement du texte de la scène (maillots, panneaux)",
+    img_overlay_logo_or_watermark: "Logo ou filigrane",
+    img_overlay_headline_overlay: "Texte ajouté sur la photo",
+    img_crop_label: "Recadrage 16:9",
+    img_crop_ok: "Le sujet principal reste entier en 16:9",
+    img_crop_bad: "Le sujet principal risque d'être coupé en 16:9",
     ev_site_label: "Site",
     ev_placeholder: "Entrez un mot-cle ou une idee d'article... ex. 'meilleurs buteurs de tous les temps en Ligue des Champions'",
     btn_check_ev: "Generer des propositions evergreen",
@@ -2204,6 +2368,69 @@ const T = {
     kw_no_match: "Nenhum artigo correspondente nos dados.",
     kw_summary: "{topics} topico(s) verificado(s) em {articles} artigos Discover em {site}.",
     tab_evergreen: "Evergreen",
+    tab_image: "Imagem Discover",
+    img_url_placeholder: "https://www.exemplo.com/foto.jpg",
+    img_file_label: "Ou envie uma imagem:",
+    img_hint: "Verifica tamanho, formato, peso e proporção de texto, depois pede ao GPT-4o para avaliar emoção, número de pessoas e nitidez. Um arquivo enviado tem prioridade sobre a URL.",
+    btn_check_img: "Analisar imagem",
+    err_empty_img: "Informe a URL de uma imagem ou escolha um arquivo.",
+    prog_img: "Analisando a imagem (formato, texto, IA)...",
+    tick_image: "Imagem Discover",
+    img_title: "Imagem de destaque (Discover)",
+    img_source: "Imagem",
+    img_origin_og: "og:image",
+    img_origin_twitter: "twitter:image",
+    img_origin_content: "primeira imagem do artigo",
+    img_origin_file: "arquivo enviado",
+    img_origin_url: "URL",
+    img_none: "Nenhuma imagem de destaque encontrada (og:image, twitter:image ou <img>).",
+    img_load_error: "Não foi possível carregar a imagem.",
+    img_dim_label: "Dimensões",
+    img_dim_ok: "{w} × {h} px — largura suficiente para os cards grandes do Discover.",
+    img_dim_small: "{w} × {h} px — o Discover exige pelo menos 1200 px de largura para imagens grandes.",
+    img_ratio_label: "Proporção",
+    img_ratio_ok: "{ratio} — paisagem, adequada aos cards do Discover.",
+    img_ratio_bad: "{ratio} — o Discover mostra imagens em paisagem: o assunto pode ser cortado.",
+    img_format_label: "Formato do arquivo",
+    img_format_ok: "{format}",
+    img_format_warn: "{format} — prefira JPEG, WebP ou AVIF para uma foto.",
+    img_weight_label: "Peso",
+    img_weight_ok: "{size}",
+    img_weight_heavy: "{size} — pesada, deixa a página lenta (ideal abaixo de 500 KB).",
+    img_unknown: "Indisponível: não foi possível baixar o arquivo da imagem.",
+    img_text_label: "Texto na imagem",
+    img_text_none: "Nenhum texto detectado.",
+    img_text_ok: "{pct}% da imagem está coberta por texto.",
+    img_text_warn: "{pct}% da imagem está coberta por texto — mantenha abaixo de 10%.",
+    img_text_fail: "{pct}% da imagem está coberta por texto — demais para o Discover (acima de 20%).",
+    img_ocr_error: "A medição do texto falhou: {msg}",
+    img_no_bytes_hint: "Peso, formato real e proporção de texto exigem o arquivo da imagem: verifique seu código de acesso nas Configurações ou envie o arquivo na aba Imagem Discover.",
+    img_boxes_legend: "Caixas vermelhas: texto detectado na imagem.",
+    img_ai_title: "Avaliação da foto por IA",
+    img_ai_score: "Atratividade no Discover",
+    img_ai_tips: "Sugestões",
+    img_emotion_label: "Emoção",
+    img_emotion_strong: "Emoção forte",
+    img_emotion_moderate: "Emoção moderada",
+    img_emotion_none: "Sem emoção visível",
+    img_people_label: "Pessoas na imagem",
+    img_people_none: "Nenhuma pessoa na imagem",
+    img_people_single: "Uma pessoa",
+    img_people_duo: "Duas pessoas",
+    img_people_small_group: "Grupo pequeno",
+    img_people_crowded: "Gente demais",
+    img_sharp_label: "Nitidez",
+    img_sharp_sharp: "Nítida",
+    img_sharp_soft: "Pouco nítida",
+    img_sharp_blurry_or_pixelated: "Desfocada ou pixelada",
+    img_overlay_label: "Texto sobreposto / logo",
+    img_overlay_none: "Nenhum",
+    img_overlay_incidental: "Apenas texto da cena (camisas, placas)",
+    img_overlay_logo_or_watermark: "Logo ou marca d'água",
+    img_overlay_headline_overlay: "Texto adicionado sobre a foto",
+    img_crop_label: "Corte 16:9",
+    img_crop_ok: "O assunto principal continua inteiro em 16:9",
+    img_crop_bad: "O assunto principal pode ser cortado em 16:9",
     ev_site_label: "Site",
     ev_placeholder: "Digite uma palavra-chave ou ideia de artigo... ex. 'maiores artilheiros da Champions League' ou 'Como funciona o ranking FIFA?'",
     btn_check_ev: "Gerar propostas evergreen",
@@ -2500,6 +2727,69 @@ const T = {
     kw_no_match: "No se encontraron articulos coincidentes en los datos.",
     kw_summary: "{topics} tema(s) verificado(s) en {articles} articulos Discover en {site}.",
     tab_evergreen: "Evergreen",
+    tab_image: "Imagen Discover",
+    img_url_placeholder: "https://www.ejemplo.com/foto.jpg",
+    img_file_label: "O sube una imagen:",
+    img_hint: "Comprueba tamaño, formato, peso y proporción de texto, y luego pide a GPT-4o que evalúe la emoción, el número de personas y la nitidez. Un archivo subido tiene prioridad sobre la URL.",
+    btn_check_img: "Analizar imagen",
+    err_empty_img: "Introduce la URL de una imagen o elige un archivo.",
+    prog_img: "Analizando la imagen (formato, texto, IA)...",
+    tick_image: "Imagen Discover",
+    img_title: "Imagen destacada (Discover)",
+    img_source: "Imagen",
+    img_origin_og: "og:image",
+    img_origin_twitter: "twitter:image",
+    img_origin_content: "primera imagen del artículo",
+    img_origin_file: "archivo subido",
+    img_origin_url: "URL",
+    img_none: "No se encontró imagen destacada (og:image, twitter:image o <img>).",
+    img_load_error: "No se pudo cargar la imagen.",
+    img_dim_label: "Dimensiones",
+    img_dim_ok: "{w} × {h} px — suficientemente ancha para las tarjetas grandes de Discover.",
+    img_dim_small: "{w} × {h} px — Discover exige al menos 1200 px de ancho para imágenes grandes.",
+    img_ratio_label: "Proporción",
+    img_ratio_ok: "{ratio} — horizontal, adecuada para las tarjetas de Discover.",
+    img_ratio_bad: "{ratio} — Discover muestra imágenes horizontales: el sujeto puede quedar recortado.",
+    img_format_label: "Formato del archivo",
+    img_format_ok: "{format}",
+    img_format_warn: "{format} — mejor JPEG, WebP o AVIF para una foto.",
+    img_weight_label: "Peso",
+    img_weight_ok: "{size}",
+    img_weight_heavy: "{size} — pesada, ralentiza la página (mejor por debajo de 500 KB).",
+    img_unknown: "No disponible: no se pudo descargar el archivo de la imagen.",
+    img_text_label: "Texto en la imagen",
+    img_text_none: "No se detectó texto.",
+    img_text_ok: "El {pct} % de la imagen está cubierto por texto.",
+    img_text_warn: "El {pct} % de la imagen está cubierto por texto — mantenlo por debajo del 10 %.",
+    img_text_fail: "El {pct} % de la imagen está cubierto por texto — demasiado para Discover (más del 20 %).",
+    img_ocr_error: "Falló la medición del texto: {msg}",
+    img_no_bytes_hint: "El peso, el formato real y la proporción de texto requieren el archivo de la imagen: revisa tu código de acceso en Ajustes o sube el archivo en la pestaña Imagen Discover.",
+    img_boxes_legend: "Recuadros rojos: texto detectado en la imagen.",
+    img_ai_title: "Revisión de la foto por IA",
+    img_ai_score: "Atractivo en Discover",
+    img_ai_tips: "Sugerencias",
+    img_emotion_label: "Emoción",
+    img_emotion_strong: "Emoción fuerte",
+    img_emotion_moderate: "Emoción moderada",
+    img_emotion_none: "Sin emoción visible",
+    img_people_label: "Personas en la imagen",
+    img_people_none: "Nadie en la imagen",
+    img_people_single: "Una persona",
+    img_people_duo: "Dos personas",
+    img_people_small_group: "Grupo pequeño",
+    img_people_crowded: "Demasiada gente",
+    img_sharp_label: "Nitidez",
+    img_sharp_sharp: "Nítida",
+    img_sharp_soft: "Algo blanda",
+    img_sharp_blurry_or_pixelated: "Borrosa o pixelada",
+    img_overlay_label: "Texto superpuesto / logo",
+    img_overlay_none: "Ninguno",
+    img_overlay_incidental: "Solo texto de la escena (camisetas, vallas)",
+    img_overlay_logo_or_watermark: "Logo o marca de agua",
+    img_overlay_headline_overlay: "Texto añadido sobre la foto",
+    img_crop_label: "Recorte 16:9",
+    img_crop_ok: "El sujeto principal queda entero en 16:9",
+    img_crop_bad: "El sujeto principal puede quedar cortado en 16:9",
     ev_site_label: "Sitio",
     ev_placeholder: "Introduce una palabra clave o idea de articulo... ej. 'maximos goleadores historicos de la Champions League'",
     btn_check_ev: "Generar propuestas evergreen",
@@ -2974,6 +3264,7 @@ function switchMode(mode) {
   document.getElementById('panelHtml').classList.toggle('active', mode === 'html');
   document.getElementById('panelKeyword').classList.toggle('active', mode === 'keyword');
   document.getElementById('panelEvergreen').classList.toggle('active', mode === 'evergreen');
+  document.getElementById('panelImage').classList.toggle('active', mode === 'image');
 }
 
 // ========== UI HELPERS ==========
@@ -2997,10 +3288,12 @@ function setLoading(on) {
   document.getElementById('analyzeBtnHtml').disabled = on;
   document.getElementById('analyzeBtnKw').disabled = on;
   document.getElementById('analyzeBtnEv').disabled = on;
+  document.getElementById('analyzeBtnImg').disabled = on;
   document.getElementById('btnTextUrl').textContent = on ? t('btn_analyzing') : t('btn_check_url');
   document.getElementById('btnTextHtml').textContent = on ? t('btn_analyzing') : t('btn_check_html');
   document.getElementById('btnTextKw').textContent = on ? t('btn_analyzing') : t('btn_check_kw');
   document.getElementById('btnTextEv').textContent = on ? t('btn_analyzing') : t('btn_check_ev');
+  document.getElementById('btnTextImg').textContent = on ? t('btn_analyzing') : t('btn_check_img');
   const activeSpinner = document.getElementById('btnSpinner_active');
   if (activeSpinner) activeSpinner.style.display = on ? 'block' : 'none';
 }
@@ -3014,6 +3307,9 @@ async function startAnalysis(mode) {
   // Evergreen mode has its own flow
   if (mode === 'evergreen') {
     return startEvergreenAnalysis();
+  }
+  if (mode === 'image') {
+    return startImageAnalysis();
   }
 
   let url = document.getElementById('urlInput').value.trim();
@@ -3039,6 +3335,7 @@ async function startAnalysis(mode) {
   document.getElementById('results').classList.remove('active');
   document.getElementById('kwResults').style.display = 'none';
   document.getElementById('evResults').style.display = 'none';
+  document.getElementById('imgResults').style.display = 'none';
   document.getElementById('progressBar').classList.remove('active');
   document.getElementById('spellBody').style.display = 'none';
   document.getElementById('qualityCard').style.display = 'none';
@@ -3046,6 +3343,7 @@ async function startAnalysis(mode) {
   document.getElementById('searchInsightsCard').style.display = 'none';
   document.getElementById('anglesCard').style.display = 'none';
   document.getElementById('newsCard').style.display = 'none';
+  document.getElementById('imageCard').style.display = 'none';
 
   try {
     if (mode === 'url') {
@@ -3089,6 +3387,12 @@ async function startAnalysis(mode) {
     const doSearchAuth = selectedSite && (document.getElementById(prefix + 'SearchAuth')?.checked ?? true);
     const doAngles = document.getElementById(prefix + 'Angles')?.checked ?? true;
     const doNews = false;
+    const doImage = document.getElementById(prefix + 'Image')?.checked ?? true;
+
+    // Image review runs alongside the text analyses and fills its card when ready
+    const imageRunId = ++_imageRunId;
+    const hero = doImage ? findHeroImage(doc, url) : null;
+    const imagePromise = !doImage ? null : hero ? analyzeImage(hero).catch(() => ({ loadError: true, src: hero.url })) : Promise.resolve(null);
 
     // Run AI calls in parallel — angles starts as soon as content analysis resolves
     setProgress(62, t('prog_ai'));
@@ -3141,6 +3445,381 @@ async function startAnalysis(mode) {
 
     setProgress(100, t('prog_done'));
     renderResults(url, title, discoverChecks, contentChecks, aiResult, spellResult, qualityResult, discoverAuthority, { aiError, spellError, qualityError }, bodyText, anglesResult, searchAuthority, newsHeadlines, { doContent, doSpell, doQuality, doAngles, doNews });
+    if (imagePromise) {
+      document.getElementById('imageCard').style.display = 'block';
+      document.getElementById('imageBody').innerHTML = `<div class="ai-unavailable">${t('prog_img')}</div>`;
+      imagePromise.then(rep => {
+        if (imageRunId === _imageRunId) renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'));
+      });
+    }
+  } catch (err) {
+    showError('Error: ' + err.message);
+    document.getElementById('progressBar').classList.remove('active');
+  } finally {
+    setLoading(false);
+    restoreSpinner();
+  }
+}
+
+// ========== IMAGE DISCOVER ==========
+const IMG_MIN_WIDTH = 1200;          // Google Discover: large images need at least 1200 px of width
+const IMG_MAX_BYTES = 500 * 1024;    // above this the image slows the page down
+// Internal thresholds — Google publishes no figure for text on Discover images
+const IMG_TEXT_WARN = 10, IMG_TEXT_FAIL = 20;
+const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let _imageRunId = 0;
+let _imageObjectUrls = [];
+let _ocrWorkerPromise = null;
+
+function loadScriptOnce(url) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${url}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('could not load ' + url));
+    document.head.appendChild(s);
+  });
+}
+
+// The image Discover is most likely to show: og:image, then twitter:image, then the first content image
+function findHeroImage(doc, pageUrl) {
+  const base = /^https?:\/\//i.test(pageUrl) ? pageUrl : undefined;
+  const candidates = [
+    ['og', doc.querySelector('meta[property="og:image"]')?.getAttribute('content')],
+    ['twitter', (doc.querySelector('meta[name="twitter:image"]') || doc.querySelector('meta[property="twitter:image"]'))?.getAttribute('content')],
+    ['content', doc.querySelector('article img[src], main img[src], img[src]')?.getAttribute('src')],
+  ];
+  for (const [origin, src] of candidates) {
+    if (!src || !src.trim()) continue;
+    try {
+      const abs = new URL(src.trim(), base).href;
+      if (/^https?:\/\//i.test(abs)) return { url: abs, origin };
+    } catch(e) {}
+  }
+  return null;
+}
+
+// An error or anti-hotlink page can come back with HTTP 200: trust the file signature, not the headers
+async function isImageFile(blob) {
+  return !!(await sniffImageFormat(blob));
+}
+
+// Pixels of another site's image can't be read by the page: try a direct CORS fetch, then the team proxy
+async function fetchImageBlob(src) {
+  try {
+    const r = await fetchWithTimeout(src, { mode: 'cors' }, 8000);
+    if (r.ok) {
+      const blob = await r.blob();
+      if (await isImageFile(blob)) return blob;
+    }
+  } catch(e) {}
+  const proxy = getGasProxy();
+  if (!proxy) return null;
+  try {
+    const r = await fetchWithTimeout(gasGetUrl(proxy, 'action=image&url=' + encodeURIComponent(src)), { redirect: 'follow' }, 25000);
+    const j = await r.json();
+    if (!j.base64 || j.status >= 400) return null;
+    const bin = atob(j.base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: j.contentType || '' });
+    return await isImageFile(blob) ? blob : null;
+  } catch(e) { return null; }
+}
+
+// Real format from the file signature (extensions, CDN URLs and headers often lie); null if unrecognised
+async function sniffImageFormat(blob) {
+  const b = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+  const s = String.fromCharCode(...b);
+  if (b[0] === 0xFF && b[1] === 0xD8) return 'JPEG';
+  if (s.startsWith('\x89PNG')) return 'PNG';
+  if (s.startsWith('GIF8')) return 'GIF';
+  if (s.startsWith('RIFF') && s.slice(8, 12) === 'WEBP') return 'WebP';
+  if (s.slice(4, 12) === 'ftypavif' || s.slice(4, 12) === 'ftypavis') return 'AVIF';
+  if (/^\s*<(\?xml|svg)/i.test(s)) return 'SVG';
+  return null;
+}
+function formatFromUrl(src) {
+  const m = src.toLowerCase().match(/format\((webp|avif|jpe?g|png)\)/) || src.toLowerCase().match(/\.(jpe?g|png|gif|webp|avif|svg)(?:[?#]|$)/);
+  if (!m) return '?';
+  return { jpg: 'JPEG', jpeg: 'JPEG', png: 'PNG', gif: 'GIF', webp: 'WebP', avif: 'AVIF', svg: 'SVG' }[m[1]];
+}
+
+function loadImgEl(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => reject(new Error('timeout')), 15000);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); reject(new Error('load error')); };
+    img.src = src;
+  });
+}
+
+function drawToCanvas(source, w, h, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
+  c.getContext('2d').drawImage(source, 0, 0, c.width, c.height);
+  return c;
+}
+
+// Share of the image covered by text, measured by OCR in the browser (the image is not sent anywhere)
+async function measureTextCoverage(canvas) {
+  await loadScriptOnce(TESSERACT_URL);
+  _ocrWorkerPromise = _ocrWorkerPromise || Tesseract.createWorker('eng');
+  const worker = await _ocrWorkerPromise;
+  const W = canvas.width, H = canvas.height;
+  // On a whole photo Tesseract's page layout skips text (a headline on a dark band was missed), so read
+  // three overlapping horizontal strips, plus a half-size copy of the whole image for very large lettering
+  const stripH = Math.round(H / 2), stripStep = Math.round(H / 4);
+  const passes = [0, stripStep, H - stripH].map(y => ({ y, h: stripH, scale: 1 }));
+  passes.push({ y: 0, h: H, scale: 0.5 });
+  const found = [];
+  for (const { y, h, scale } of passes) {
+    const strip = document.createElement('canvas');
+    strip.width = Math.round(W * scale);
+    strip.height = Math.round(h * scale);
+    strip.getContext('2d').drawImage(canvas, 0, y, W, h, 0, 0, strip.width, strip.height);
+    const { data } = await worker.recognize(strip);
+    const words = data.words || (data.blocks || []).flatMap(b => b.paragraphs.flatMap(p => p.lines.flatMap(l => l.words)));
+    for (const w of words) found.push({ text: w.text, confidence: w.confidence, bbox: { x0: w.bbox.x0 / scale, x1: w.bbox.x1 / scale, y0: w.bbox.y0 / scale + y, y1: w.bbox.y1 / scale + y } });
+  }
+  const iou = (a, b) => {
+    const inter = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+    const area = r => (r.x1 - r.x0) * (r.y1 - r.y0);
+    return inter / (area(a) + area(b) - inter || 1);
+  };
+  // On real photos, textures produce short low-confidence "words" ("Vr", "AY", "fy,"): keep real ones only.
+  // A word read in several passes is kept once
+  const words = found.filter(w => w.confidence >= 75 && (w.text.match(/[\p{L}\p{N}]/gu) || []).length >= 3)
+    .filter((w, i, arr) => !arr.slice(0, i).some(o => iou(o.bbox, w.bbox) > 0.5));
+  // Union of word boxes on a coarse mask, so overlapping boxes are not counted twice
+  const step = Math.max(1, Math.round(W / 400));
+  const cols = Math.ceil(W / step), rows = Math.ceil(H / step);
+  const mask = new Uint8Array(cols * rows);
+  for (const w of words) {
+    const b = w.bbox;
+    for (let y = Math.floor(b.y0 / step); y < Math.min(rows, Math.ceil(b.y1 / step)); y++)
+      for (let x = Math.floor(b.x0 / step); x < Math.min(cols, Math.ceil(b.x1 / step)); x++) mask[y * cols + x] = 1;
+  }
+  const covered = mask.reduce((a, v) => a + v, 0);
+  return {
+    percent: Math.round(covered / (cols * rows) * 1000) / 10,
+    boxes: words.map(w => ({ x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1, text: w.text })),
+    width: W, height: H
+  };
+}
+
+async function runImageAI(imageUrl) {
+  const langName = LANG === 'fr' ? 'French' : LANG === 'pt-br' ? 'Brazilian Portuguese' : LANG === 'es' ? 'Spanish' : 'English';
+  const data = await callOpenAI({
+    model: OPENAI_MODEL,
+    messages: [
+      { role: 'system', content: `You are the photo editor of a network of sports news sites. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject, and penalises crowded scenes, logos, watermarks and text written on the image. Answer ONLY through the image_report tool. Write every comment, the summary and the suggestions in ${langName}.` },
+      { role: 'user', content: [
+        { type: 'text', text: 'Review this lead image for Google Discover.' },
+        { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } }
+      ] }
+    ],
+    tools: [{
+      type: 'function',
+      function: {
+        name: 'image_report',
+        description: 'Photo review of an article lead image for Google Discover',
+        parameters: {
+          type: 'object',
+          properties: {
+            emotion: { type: 'object', properties: {
+              level: { type: 'string', enum: ['strong', 'moderate', 'none'], description: 'strong = an emotion is clearly readable on at least one face (celebration, joy, anger, despair, tension); none = no readable face or neutral expressions' },
+              comment: { type: 'string' } }, required: ['level', 'comment'] },
+            people: { type: 'object', properties: {
+              count: { type: 'integer', description: 'People clearly visible (players, coaches, fans in focus); ignore a blurred crowd in the background' },
+              framing: { type: 'string', enum: ['none', 'single', 'duo', 'small_group', 'crowded'], description: 'none = nobody (stadium, ball, logo), single = 1, duo = 2, small_group = 3-4, crowded = 5 or more' },
+              comment: { type: 'string' } }, required: ['count', 'framing', 'comment'] },
+            sharpness: { type: 'object', properties: {
+              status: { type: 'string', enum: ['sharp', 'soft', 'blurry_or_pixelated'], description: 'Judge the main subject: a blurred background behind a sharp subject is sharp' },
+              comment: { type: 'string' } }, required: ['status', 'comment'] },
+            text_overlay: { type: 'object', properties: {
+              kind: { type: 'string', enum: ['none', 'incidental', 'logo_or_watermark', 'headline_overlay'], description: 'incidental = text that is part of the scene (shirts, sponsor boards, stadium signs); headline_overlay = words added on top of the photo' },
+              comment: { type: 'string' } }, required: ['kind', 'comment'] },
+            crop_16_9: { type: 'object', properties: {
+              safe: { type: 'boolean', description: 'The main subject (faces included) stays whole in a centred 16:9 crop' },
+              comment: { type: 'string' } }, required: ['safe', 'comment'] },
+            score: { type: 'integer', description: '0-100: how likely the image is to earn taps in Discover' },
+            summary: { type: 'string', description: 'One or two sentences' },
+            suggestions: { type: 'array', items: { type: 'string' }, description: 'Up to 3 concrete improvements, empty if none' }
+          },
+          required: ['emotion', 'people', 'sharpness', 'text_overlay', 'crop_16_9', 'score', 'summary', 'suggestions']
+        }
+      }
+    }],
+    tool_choice: { type: 'function', function: { name: 'image_report' } },
+    temperature: 0.2
+  });
+  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!tc) throw new Error(t('err_no_tool'));
+  return JSON.parse(tc.function.arguments);
+}
+
+// Full report for { url, origin } or { file, origin }; OCR and AI failures are reported, never thrown
+async function analyzeImage(source) {
+  _imageObjectUrls.forEach(u => URL.revokeObjectURL(u));
+  _imageObjectUrls = [];
+  const rep = { origin: source.origin, src: source.url || '', fileName: source.file?.name || '' };
+  const blob = source.file || await fetchImageBlob(source.url);
+  let drawable = null;
+  if (blob) {
+    rep.bytes = blob.size;
+    rep.format = await sniffImageFormat(blob) || (blob.type.split('/')[1] || '?').toUpperCase();
+    rep.previewUrl = URL.createObjectURL(blob);
+    _imageObjectUrls.push(rep.previewUrl);
+    try { drawable = await createImageBitmap(blob); }
+    catch(e) { drawable = await loadImgEl(rep.previewUrl).catch(() => null); }
+    if (drawable) { rep.width = drawable.width || drawable.naturalWidth; rep.height = drawable.height || drawable.naturalHeight; }
+  } else {
+    // Without the file: dimensions still readable from a plain <img>, the rest is unavailable
+    rep.noBytes = true;
+    rep.format = formatFromUrl(source.url);
+    rep.previewUrl = source.url;
+    const el = await loadImgEl(source.url).catch(() => null);
+    if (el) { rep.width = el.naturalWidth; rep.height = el.naturalHeight; }
+  }
+  if (!rep.width || !rep.height) { rep.loadError = true; return rep; }
+
+  const tasks = [];
+  if (drawable) {
+    tasks.push(measureTextCoverage(drawToCanvas(drawable, rep.width, rep.height, 1200))
+      .then(r => { rep.ocr = r; }).catch(e => { rep.ocr = { error: e.message || String(e) }; }));
+  }
+  // OpenAI downloads the URL itself when the page has no pixels; otherwise send a light JPEG copy
+  const aiInput = drawable ? drawToCanvas(drawable, rep.width, rep.height, 1024).toDataURL('image/jpeg', 0.85) : source.url;
+  tasks.push(runImageAI(aiInput).then(r => { rep.ai = r; }).catch(e => { rep.ai = { error: e.message || String(e) }; }));
+  await Promise.all(tasks);
+  return rep;
+}
+
+function formatBytes(n) {
+  const [kb, mb] = LANG === 'fr' ? ['Ko', 'Mo'] : ['KB', 'MB'];
+  return n < 1024 * 1024 ? Math.round(n / 1024) + ' ' + kb : (n / 1048576).toFixed(1) + ' ' + mb;
+}
+function ratioLabel(w, h) {
+  const r = w / h;
+  const known = [['16:9', 16/9], ['1.91:1', 1.91], ['2:1', 2], ['3:2', 1.5], ['4:3', 4/3], ['5:4', 1.25], ['1:1', 1], ['4:5', 0.8], ['3:4', 0.75], ['2:3', 2/3], ['9:16', 9/16]];
+  const hit = known.find(([, v]) => Math.abs(r - v) / v < 0.02);
+  return (hit ? hit[0] + ' · ' : '') + r.toFixed(2);
+}
+
+function imageChecks(rep) {
+  const checks = [];
+  const { width: w, height: h } = rep;
+  checks.push({ label: t('img_dim_label'), status: w >= IMG_MIN_WIDTH ? 'ok' : 'fail', detail: t(w >= IMG_MIN_WIDTH ? 'img_dim_ok' : 'img_dim_small', { w, h }) });
+  const r = w / h;
+  checks.push({ label: t('img_ratio_label'), status: r >= 1.3 && r <= 2.0 ? 'ok' : 'warning', detail: t(r >= 1.3 && r <= 2.0 ? 'img_ratio_ok' : 'img_ratio_bad', { ratio: ratioLabel(w, h) }) });
+  const goodFormat = ['JPEG', 'WebP', 'AVIF', 'PNG'].includes(rep.format);
+  checks.push({ label: t('img_format_label'), status: rep.format === '?' ? 'a_verifier' : goodFormat ? 'ok' : 'warning', detail: rep.format === '?' ? t('img_unknown') : t(goodFormat ? 'img_format_ok' : 'img_format_warn', { format: rep.format }) });
+  if (rep.bytes == null) checks.push({ label: t('img_weight_label'), status: 'a_verifier', detail: t('img_unknown') });
+  else checks.push({ label: t('img_weight_label'), status: rep.bytes <= IMG_MAX_BYTES ? 'ok' : 'warning', detail: t(rep.bytes <= IMG_MAX_BYTES ? 'img_weight_ok' : 'img_weight_heavy', { size: formatBytes(rep.bytes) }) });
+  if (!rep.ocr) checks.push({ label: t('img_text_label'), status: 'a_verifier', detail: t('img_unknown') });
+  else if (rep.ocr.error) checks.push({ label: t('img_text_label'), status: 'a_verifier', detail: t('img_ocr_error', { msg: rep.ocr.error }) });
+  else {
+    const pct = rep.ocr.percent;
+    const status = pct > IMG_TEXT_FAIL ? 'fail' : pct > IMG_TEXT_WARN ? 'warning' : 'ok';
+    checks.push({ label: t('img_text_label'), status, detail: pct === 0 ? t('img_text_none') : t({ ok: 'img_text_ok', warning: 'img_text_warn', fail: 'img_text_fail' }[status], { pct }) });
+  }
+  return checks;
+}
+
+function imageAiChecks(ai) {
+  const row = (label, status, value, comment) => ({ label, status, detail: value + (comment ? ' — ' + comment : '') });
+  const emo = ai.emotion?.level, fr = ai.people?.framing, sh = ai.sharpness?.status, ov = ai.text_overlay?.kind;
+  return [
+    row(t('img_emotion_label'), { strong: 'ok', moderate: 'warning' }[emo] || 'fail', t('img_emotion_' + (emo || 'none')), ai.emotion?.comment),
+    row(t('img_people_label'), { single: 'ok', duo: 'ok', small_group: 'warning', none: 'warning' }[fr] || 'fail', t('img_people_' + (fr || 'crowded')) + (ai.people?.count != null ? ' (' + ai.people.count + ')' : ''), ai.people?.comment),
+    row(t('img_sharp_label'), { sharp: 'ok', soft: 'warning' }[sh] || 'fail', t('img_sharp_' + (sh || 'blurry_or_pixelated')), ai.sharpness?.comment),
+    row(t('img_overlay_label'), { none: 'ok', incidental: 'ok', logo_or_watermark: 'warning' }[ov] || 'fail', t('img_overlay_' + (ov || 'headline_overlay')), ai.text_overlay?.comment),
+    row(t('img_crop_label'), ai.crop_16_9?.safe ? 'ok' : 'warning', t(ai.crop_16_9?.safe ? 'img_crop_ok' : 'img_crop_bad'), ai.crop_16_9?.comment),
+  ];
+}
+
+function checkRowsHtml(checks) {
+  return checks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
+}
+
+function renderImageReport(el, rep, countEl) {
+  if (countEl) countEl.innerHTML = '';
+  if (!rep) { el.innerHTML = `<div class="ai-unavailable">${esc(t('img_none'))}</div>`; return; }
+  if (rep.loadError) { el.innerHTML = `<div class="ai-unavailable">${t('img_load_error')} <span class="ai-unavailable-detail">${esc(rep.src || rep.fileName)}</span></div>`; return; }
+
+  const checks = imageChecks(rep);
+  const aiChecks = rep.ai && !rep.ai.error ? imageAiChecks(rep.ai) : [];
+  const all = checks.concat(aiChecks);
+  const okCount = all.filter(c => c.status === 'ok').length;
+  if (countEl) {
+    const color = okCount === all.length ? 'green' : okCount >= all.length - 2 ? 'amber' : 'red';
+    countEl.innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${okCount}/${all.length} OK`;
+  }
+
+  const sourceLabel = t('img_origin_' + rep.origin);
+  const sourceDetail = rep.fileName
+    ? `${esc(sourceLabel)} · ${esc(rep.fileName)}`
+    : `${esc(sourceLabel)} · <a href="${safeUrl(rep.src)}" target="_blank" rel="noopener">${esc(rep.src.length > 90 ? rep.src.substring(0, 90) + '…' : rep.src)}</a>`;
+  const preview = /^(blob:|https?:\/\/)/i.test(rep.previewUrl || '') ? rep.previewUrl : '';
+  const boxes = rep.ocr && !rep.ocr.error && rep.ocr.boxes.length
+    ? `<svg class="img-ocr-overlay" viewBox="0 0 ${rep.ocr.width} ${rep.ocr.height}" preserveAspectRatio="none" aria-hidden="true">${rep.ocr.boxes.map(b => `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}"></rect>`).join('')}</svg>`
+    : '';
+
+  let html = `<div class="img-report">
+    <figure class="img-preview">${preview ? `<div class="img-frame"><img src="${esc(preview)}" alt="">${boxes}</div>` : ''}${boxes ? `<figcaption>${t('img_boxes_legend')}</figcaption>` : ''}</figure>
+    <div class="img-checks">
+      <div class="check-row"><div class="status-dot a_verifier"></div><div class="check-label">${t('img_source')}</div><div class="check-detail">${sourceDetail}</div></div>
+      ${checkRowsHtml(checks)}
+    </div>
+  </div>`;
+  if (rep.noBytes) html += `<div class="ai-unavailable" style="margin-top:12px">${t('img_no_bytes_hint')}</div>`;
+
+  html += `<div class="ai-subsection" style="margin-top:16px"><h4>${t('img_ai_title')} <span class="ai-badge">GPT-4o</span></h4>`;
+  if (!rep.ai || rep.ai.error) {
+    html += `<div class="ai-unavailable">${t('ai_unavailable')}${rep.ai?.error ? ' <span class="ai-unavailable-detail">(' + esc(rep.ai.error) + ')</span>' : ''}</div>`;
+  } else {
+    const score = Number.isFinite(rep.ai.score) ? rep.ai.score : null;
+    const scoreStatus = score == null ? 'a_verifier' : score >= 70 ? 'ok' : score >= 40 ? 'warning' : 'fail';
+    html += checkRowsHtml([{ label: t('img_ai_score'), status: scoreStatus, detail: (score ?? '?') + '/100' + (rep.ai.summary ? ' — ' + rep.ai.summary : '') }].concat(aiChecks));
+    const tips = (rep.ai.suggestions || []).filter(Boolean);
+    if (tips.length) html += `<div class="img-tips"><strong>${t('img_ai_tips')}</strong><ul>${tips.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+async function startImageAnalysis() {
+  const file = document.getElementById('imgFileInput').files[0] || null;
+  const url = document.getElementById('imgUrlInput').value.trim();
+  if (!file && !url) { showError(t('err_empty_img')); return; }
+  if (!file && !/^https?:\/\//i.test(url)) { showError(t('err_url')); return; }
+
+  const spinnerEl = document.getElementById('btnSpinnerImg');
+  spinnerEl.id = 'btnSpinner_active';
+  const restoreSpinner = () => { spinnerEl.id = 'btnSpinnerImg'; };
+
+  clearError();
+  setLoading(true);
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('kwResults').style.display = 'none';
+  document.getElementById('evResults').style.display = 'none';
+  const container = document.getElementById('imgResults');
+  container.style.display = 'none';
+
+  const runId = ++_imageRunId;
+  try {
+    setProgress(30, t('prog_img'));
+    const rep = await analyzeImage(file ? { file, origin: 'file' } : { url, origin: 'url' });
+    if (runId !== _imageRunId) return;
+    setProgress(100, t('prog_done'));
+    container.innerHTML = `<div class="card"><div class="card-header" onclick="toggleCard(this)"><h3>🖼️ <span>${t('img_title')}</span> <span class="count" id="imgTabCount"></span></h3><span class="chevron">▼</span></div><div class="card-body" id="imgTabBody"></div></div>`;
+    container.style.display = 'block';
+    renderImageReport(document.getElementById('imgTabBody'), rep, document.getElementById('imgTabCount'));
   } catch (err) {
     showError('Error: ' + err.message);
     document.getElementById('progressBar').classList.remove('active');
@@ -3336,6 +4015,7 @@ async function startKeywordAnalysis() {
   document.getElementById('results').classList.remove('active');
   document.getElementById('kwResults').style.display = 'none';
   document.getElementById('evResults').style.display = 'none';
+  document.getElementById('imgResults').style.display = 'none';
   document.getElementById('progressBar').classList.remove('active');
 
   try {
@@ -6861,6 +7541,7 @@ async function startEvergreenAnalysis() {
   document.getElementById('results').classList.remove('active');
   document.getElementById('kwResults').style.display = 'none';
   document.getElementById('evResults').style.display = 'none';
+  document.getElementById('imgResults').style.display = 'none';
   document.getElementById('progressBar').classList.remove('active');
 
   try {

@@ -72,6 +72,21 @@ function doGet(e) {
     return json_({feedback: rows, count: rows.length});
   }
 
+  // Image bytes as base64: browsers can't read pixels of images from other sites,
+  // and the page needs them for file size, real format and text coverage
+  if (p.action === 'image') {
+    if (!p.url || !/^https?:\/\//i.test(p.url)) return json_({error: 'invalid url'});
+    var img = UrlFetchApp.fetch(p.url, {muteHttpExceptions: true, followRedirects: true});
+    var bytes = img.getContent();
+    if (bytes.length > 10 * 1024 * 1024) return json_({error: 'image too large'});
+    return json_({
+      status: img.getResponseCode(),
+      contentType: img.getBlob().getContentType(),
+      size: bytes.length,
+      base64: Utilities.base64Encode(bytes)
+    });
+  }
+
   // Default: CORS proxy (http/https only)
   var url = p.url;
   if (!url) return ContentService.createTextOutput('Missing url param');
