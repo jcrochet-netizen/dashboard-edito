@@ -548,7 +548,19 @@ body {
 .img-tips { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
 .img-tips ul { margin: 6px 0 0 18px; }
 .img-tips li { margin-bottom: 4px; }
-.img-score-lost { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.check-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.summary-pending { font-size: 12px; color: var(--text-dim); padding: 8px 0 4px; }
+.title-suggestions { margin-top: 14px; }
+.title-suggestions h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.title-suggestions ol { margin: 0; padding-left: 22px; }
+.title-suggestions li { padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
+.title-suggestions li:last-child { border-bottom: none; }
+.ts-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.ts-meta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.ts-angle { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 1px 6px; border-radius: 3px; background: var(--surface-2); color: var(--text-muted); }
+.ts-angle.discover { color: var(--accent); }
+.ts-angle.search { color: var(--green); }
+.ts-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
 @media (max-width: 640px) { .img-report { grid-template-columns: 1fr; } }
 
@@ -1510,7 +1522,6 @@ const T = {
     summary_improve: "To improve",
     summary_none: "Nothing to fix: every check is green.",
     summary_count: "{fix} to fix · {improve} to improve",
-    summary_image_pending: "Image analysis in progress, its points will be added here.",
     summary_title_suggestion: "Suggested title: {title}",
     summary_fluff_high: "{n} high-impact filler passage(s) to cut",
     summary_fluff_medium: "{n} filler passage(s) to tighten",
@@ -1529,6 +1540,35 @@ const T = {
     title_chars: "{n} characters",
     criteria_count: "{ok}/{n} criteria OK",
     title_no_ai: "The title is analysed by the AI: tick Content Analysis or Google Quality Rater (and check your access code).",
+    title_len_label: "Length",
+    title_len_long: "May be cut in Google Search, which shows about 60 to 65 characters: put the key information first.",
+    title_len_too_long: "Too long: cut in Search and heavy in Discover cards.",
+    title_kw_label: "Main keyword",
+    title_kw_start: "at the start of the title",
+    title_kw_middle: "in the middle of the title",
+    title_kw_end: "at the end of the title",
+    title_kw_absent: "missing from the title",
+    title_kw_missing: "Missing names: {list}.",
+    title_num_label: "Figure",
+    title_num_yes: "Present",
+    title_num_no: "None (possible bonus)",
+    title_num_available: "The article has one that could work: {n}.",
+    title_emo_label: "Emotional wording",
+    title_emo_strong: "Strong",
+    title_emo_some: "Present",
+    title_emo_none: "Neutral (possible bonus)",
+    title_promise_label: "Promise kept",
+    title_promise_kept: "Yes",
+    title_promise_overstated: "Overstated",
+    title_promise_misleading: "Misleading",
+    title_suggestions_title: "Suggested titles",
+    title_angle_search: "Search",
+    title_angle_discover: "Discover",
+    title_angle_both: "Discover + Search",
+    title_pending: "Analysing the title...",
+    summary_pending: "Still running: {what}. Their points will be added here.",
+    summary_suggestion: "Advice: {text}",
+    img_text_pct: "{pct}% of the image",
     kpi_words: "Words",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -1742,21 +1782,16 @@ const T = {
     img_hero_none: "No lead image found on the page (og:image, twitter:image or <img>).",
     img_load_error: "The image could not be loaded.",
     img_dim_label: "Dimensions",
-    img_dim_ok: "{w} × {h} px — wide enough for large Discover cards.",
     img_dim_small: "{w} × {h} px — Discover needs at least 1200 px of width for large images.",
     img_ratio_label: "Aspect ratio",
-    img_ratio_ok: "{ratio} — landscape, fits Discover cards.",
     img_ratio_bad: "{ratio} — Discover shows landscape images: the subject may be cropped.",
     img_format_label: "File format",
-    img_format_ok: "{format}",
     img_format_warn: "{format} — prefer JPEG, WebP or AVIF for a photo.",
     img_weight_label: "File size",
-    img_weight_ok: "{size}",
     img_weight_heavy: "{size} — heavy, slows the page down (aim for under 500 KB).",
     img_unknown: "Not available: the image file could not be downloaded.",
     img_text_label: "Text on the image",
     img_text_none: "No text detected.",
-    img_text_ok: "{pct}% of the image is covered by text.",
     img_text_warn: "{pct}% of the image is covered by text — keep it under 10%.",
     img_text_fail: "{pct}% of the image is covered by text — too much for Discover (over 20%).",
     img_ocr_error: "Text measurement failed: {msg}",
@@ -1764,7 +1799,6 @@ const T = {
     img_boxes_legend: "Red boxes: text detected on the image.",
     img_ai_title: "AI photo review",
     img_ai_score: "Discover score",
-    img_ai_tips: "Suggestions",
     img_emotion_label: "Emotion",
     img_emotion_strong: "Strong emotion",
     img_emotion_moderate: "Moderate emotion",
@@ -1776,9 +1810,6 @@ const T = {
     img_bg_clean: "Clean",
     img_bg_busy: "Busy",
     img_bg_distracting: "Distracting",
-    img_score_lost: "Points lost",
-    img_score_none: "No points lost",
-    img_score_hint: "Computed by the page: 100 minus the points lost on each criterion.",
     img_people_duo: "Two people",
     img_people_small_group: "Small group",
     img_people_crowded: "Too many people",
@@ -1908,7 +1939,6 @@ const T = {
     summary_improve: "À améliorer",
     summary_none: "Rien à corriger : tous les contrôles sont au vert.",
     summary_count: "{fix} à corriger · {improve} à améliorer",
-    summary_image_pending: "Analyse de l'image en cours, ses points s'ajouteront ici.",
     summary_title_suggestion: "Titre suggéré : {title}",
     summary_fluff_high: "{n} passage(s) de remplissage à fort impact à supprimer",
     summary_fluff_medium: "{n} passage(s) de remplissage à resserrer",
@@ -1927,6 +1957,35 @@ const T = {
     title_chars: "{n} caractères",
     criteria_count: "{ok}/{n} critères OK",
     title_no_ai: "Le titre est analysé par l'IA : cochez Analyse du contenu ou Google Quality Rater (et vérifiez votre code d'accès).",
+    title_len_label: "Longueur",
+    title_len_long: "Risque d'être coupé dans Google Search, qui affiche environ 60 à 65 caractères : mettez l'essentiel au début.",
+    title_len_too_long: "Trop long : coupé dans Search et lourd dans les cartes Discover.",
+    title_kw_label: "Mot-clé principal",
+    title_kw_start: "en début de titre",
+    title_kw_middle: "au milieu du titre",
+    title_kw_end: "en fin de titre",
+    title_kw_absent: "absent du titre",
+    title_kw_missing: "Noms absents : {list}.",
+    title_num_label: "Chiffre",
+    title_num_yes: "Présent",
+    title_num_no: "Aucun (bonus possible)",
+    title_num_available: "L'article en contient un qui pourrait servir : {n}.",
+    title_emo_label: "Wording émotionnel",
+    title_emo_strong: "Fort",
+    title_emo_some: "Présent",
+    title_emo_none: "Neutre (bonus possible)",
+    title_promise_label: "Promesse tenue",
+    title_promise_kept: "Oui",
+    title_promise_overstated: "Exagérée",
+    title_promise_misleading: "Trompeuse",
+    title_suggestions_title: "Titres proposés",
+    title_angle_search: "Search",
+    title_angle_discover: "Discover",
+    title_angle_both: "Discover + Search",
+    title_pending: "Analyse du titre en cours...",
+    summary_pending: "En cours : {what}. Leurs points s'ajouteront ici.",
+    summary_suggestion: "Conseil : {text}",
+    img_text_pct: "{pct} % de l'image",
     kpi_words: "Mots",
     kpi_links: "Liens",
     kpi_h2: "H2",
@@ -2132,21 +2191,16 @@ const T = {
     img_hero_none: "Aucune image d'illustration trouvée (og:image, twitter:image ou <img>).",
     img_load_error: "Impossible de charger l'image.",
     img_dim_label: "Dimensions",
-    img_dim_ok: "{w} × {h} px — assez large pour les grandes cartes Discover.",
     img_dim_small: "{w} × {h} px — Discover demande au moins 1200 px de large pour les grandes images.",
     img_ratio_label: "Proportions",
-    img_ratio_ok: "{ratio} — paysage, adapté aux cartes Discover.",
     img_ratio_bad: "{ratio} — Discover affiche des images en paysage : le sujet risque d'être coupé.",
     img_format_label: "Format du fichier",
-    img_format_ok: "{format}",
     img_format_warn: "{format} — préférez JPEG, WebP ou AVIF pour une photo.",
     img_weight_label: "Poids",
-    img_weight_ok: "{size}",
     img_weight_heavy: "{size} — lourd, ralentit la page (visez moins de 500 Ko).",
     img_unknown: "Indisponible : le fichier de l'image n'a pas pu être récupéré.",
     img_text_label: "Texte sur l'image",
     img_text_none: "Aucun texte détecté.",
-    img_text_ok: "{pct} % de l'image est couverte de texte.",
     img_text_warn: "{pct} % de l'image est couverte de texte — restez sous 10 %.",
     img_text_fail: "{pct} % de l'image est couverte de texte — trop pour Discover (plus de 20 %).",
     img_ocr_error: "La mesure du texte a échoué : {msg}",
@@ -2154,7 +2208,6 @@ const T = {
     img_boxes_legend: "Cadres rouges : texte détecté sur l'image.",
     img_ai_title: "Avis IA sur la photo",
     img_ai_score: "Note Discover",
-    img_ai_tips: "Suggestions",
     img_emotion_label: "Émotion",
     img_emotion_strong: "Émotion forte",
     img_emotion_moderate: "Émotion modérée",
@@ -2166,9 +2219,6 @@ const T = {
     img_bg_clean: "Propre",
     img_bg_busy: "Chargé",
     img_bg_distracting: "Gênant",
-    img_score_lost: "Points retirés",
-    img_score_none: "Aucun point retiré",
-    img_score_hint: "Calculée par la page : 100 moins les points retirés pour chaque critère.",
     img_people_duo: "Deux personnes",
     img_people_small_group: "Petit groupe",
     img_people_crowded: "Trop de monde",
@@ -2298,7 +2348,6 @@ const T = {
     summary_improve: "A melhorar",
     summary_none: "Nada a corrigir: todas as verificações estão verdes.",
     summary_count: "{fix} a corrigir · {improve} a melhorar",
-    summary_image_pending: "Análise da imagem em andamento, os pontos dela serão adicionados aqui.",
     summary_title_suggestion: "Título sugerido: {title}",
     summary_fluff_high: "{n} trecho(s) de enchimento de alto impacto para cortar",
     summary_fluff_medium: "{n} trecho(s) de enchimento para enxugar",
@@ -2317,6 +2366,35 @@ const T = {
     title_chars: "{n} caracteres",
     criteria_count: "{ok}/{n} critérios OK",
     title_no_ai: "O título é analisado pela IA: marque Análise de conteúdo ou Google Quality Rater (e verifique seu código de acesso).",
+    title_len_label: "Tamanho",
+    title_len_long: "Pode ser cortado no Google Search, que mostra cerca de 60 a 65 caracteres: coloque o essencial no início.",
+    title_len_too_long: "Longo demais: cortado no Search e pesado nos cards do Discover.",
+    title_kw_label: "Palavra-chave principal",
+    title_kw_start: "no início do título",
+    title_kw_middle: "no meio do título",
+    title_kw_end: "no fim do título",
+    title_kw_absent: "ausente do título",
+    title_kw_missing: "Nomes ausentes: {list}.",
+    title_num_label: "Número",
+    title_num_yes: "Presente",
+    title_num_no: "Nenhum (bônus possível)",
+    title_num_available: "O artigo tem um que poderia servir: {n}.",
+    title_emo_label: "Vocabulário emocional",
+    title_emo_strong: "Forte",
+    title_emo_some: "Presente",
+    title_emo_none: "Neutro (bônus possível)",
+    title_promise_label: "Promessa cumprida",
+    title_promise_kept: "Sim",
+    title_promise_overstated: "Exagerada",
+    title_promise_misleading: "Enganosa",
+    title_suggestions_title: "Títulos sugeridos",
+    title_angle_search: "Search",
+    title_angle_discover: "Discover",
+    title_angle_both: "Discover + Search",
+    title_pending: "Analisando o título...",
+    summary_pending: "Em andamento: {what}. Os pontos serão adicionados aqui.",
+    summary_suggestion: "Conselho: {text}",
+    img_text_pct: "{pct}% da imagem",
     kpi_words: "Palavras",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -2504,21 +2582,16 @@ const T = {
     img_hero_none: "Nenhuma imagem de destaque encontrada (og:image, twitter:image ou <img>).",
     img_load_error: "Não foi possível carregar a imagem.",
     img_dim_label: "Dimensões",
-    img_dim_ok: "{w} × {h} px — largura suficiente para os cards grandes do Discover.",
     img_dim_small: "{w} × {h} px — o Discover exige pelo menos 1200 px de largura para imagens grandes.",
     img_ratio_label: "Proporção",
-    img_ratio_ok: "{ratio} — paisagem, adequada aos cards do Discover.",
     img_ratio_bad: "{ratio} — o Discover mostra imagens em paisagem: o assunto pode ser cortado.",
     img_format_label: "Formato do arquivo",
-    img_format_ok: "{format}",
     img_format_warn: "{format} — prefira JPEG, WebP ou AVIF para uma foto.",
     img_weight_label: "Peso",
-    img_weight_ok: "{size}",
     img_weight_heavy: "{size} — pesada, deixa a página lenta (ideal abaixo de 500 KB).",
     img_unknown: "Indisponível: não foi possível baixar o arquivo da imagem.",
     img_text_label: "Texto na imagem",
     img_text_none: "Nenhum texto detectado.",
-    img_text_ok: "{pct}% da imagem está coberta por texto.",
     img_text_warn: "{pct}% da imagem está coberta por texto — mantenha abaixo de 10%.",
     img_text_fail: "{pct}% da imagem está coberta por texto — demais para o Discover (acima de 20%).",
     img_ocr_error: "A medição do texto falhou: {msg}",
@@ -2526,7 +2599,6 @@ const T = {
     img_boxes_legend: "Caixas vermelhas: texto detectado na imagem.",
     img_ai_title: "Avaliação da foto por IA",
     img_ai_score: "Nota Discover",
-    img_ai_tips: "Sugestões",
     img_emotion_label: "Emoção",
     img_emotion_strong: "Emoção forte",
     img_emotion_moderate: "Emoção moderada",
@@ -2538,9 +2610,6 @@ const T = {
     img_bg_clean: "Limpo",
     img_bg_busy: "Carregado",
     img_bg_distracting: "Atrapalha",
-    img_score_lost: "Pontos perdidos",
-    img_score_none: "Nenhum ponto perdido",
-    img_score_hint: "Calculada pela página: 100 menos os pontos perdidos em cada critério.",
     img_people_duo: "Duas pessoas",
     img_people_small_group: "Grupo pequeno",
     img_people_crowded: "Gente demais",
@@ -2689,7 +2758,6 @@ const T = {
     summary_improve: "A mejorar",
     summary_none: "Nada que corregir: todas las comprobaciones están en verde.",
     summary_count: "{fix} a corregir · {improve} a mejorar",
-    summary_image_pending: "Análisis de la imagen en curso, sus puntos se añadirán aquí.",
     summary_title_suggestion: "Título sugerido: {title}",
     summary_fluff_high: "{n} pasaje(s) de relleno de alto impacto que eliminar",
     summary_fluff_medium: "{n} pasaje(s) de relleno que ajustar",
@@ -2708,6 +2776,35 @@ const T = {
     title_chars: "{n} caracteres",
     criteria_count: "{ok}/{n} criterios OK",
     title_no_ai: "La IA analiza el título: marca Análisis de contenido o Google Quality Rater (y revisa tu código de acceso).",
+    title_len_label: "Longitud",
+    title_len_long: "Puede cortarse en Google Search, que muestra unos 60 a 65 caracteres: pon lo esencial al principio.",
+    title_len_too_long: "Demasiado largo: cortado en Search y pesado en las tarjetas de Discover.",
+    title_kw_label: "Palabra clave principal",
+    title_kw_start: "al inicio del título",
+    title_kw_middle: "en medio del título",
+    title_kw_end: "al final del título",
+    title_kw_absent: "ausente del título",
+    title_kw_missing: "Nombres ausentes: {list}.",
+    title_num_label: "Cifra",
+    title_num_yes: "Presente",
+    title_num_no: "Ninguna (bonus posible)",
+    title_num_available: "El artículo tiene una que podría servir: {n}.",
+    title_emo_label: "Vocabulario emocional",
+    title_emo_strong: "Fuerte",
+    title_emo_some: "Presente",
+    title_emo_none: "Neutro (bonus posible)",
+    title_promise_label: "Promesa cumplida",
+    title_promise_kept: "Sí",
+    title_promise_overstated: "Exagerada",
+    title_promise_misleading: "Engañosa",
+    title_suggestions_title: "Títulos sugeridos",
+    title_angle_search: "Search",
+    title_angle_discover: "Discover",
+    title_angle_both: "Discover + Search",
+    title_pending: "Analizando el título...",
+    summary_pending: "En curso: {what}. Sus puntos se añadirán aquí.",
+    summary_suggestion: "Consejo: {text}",
+    img_text_pct: "{pct} % de la imagen",
     kpi_words: "Palabras",
     kpi_links: "Enlaces",
     kpi_h2: "H2",
@@ -2894,21 +2991,16 @@ const T = {
     img_hero_none: "No se encontró imagen destacada (og:image, twitter:image o <img>).",
     img_load_error: "No se pudo cargar la imagen.",
     img_dim_label: "Dimensiones",
-    img_dim_ok: "{w} × {h} px — suficientemente ancha para las tarjetas grandes de Discover.",
     img_dim_small: "{w} × {h} px — Discover exige al menos 1200 px de ancho para imágenes grandes.",
     img_ratio_label: "Proporción",
-    img_ratio_ok: "{ratio} — horizontal, adecuada para las tarjetas de Discover.",
     img_ratio_bad: "{ratio} — Discover muestra imágenes horizontales: el sujeto puede quedar recortado.",
     img_format_label: "Formato del archivo",
-    img_format_ok: "{format}",
     img_format_warn: "{format} — mejor JPEG, WebP o AVIF para una foto.",
     img_weight_label: "Peso",
-    img_weight_ok: "{size}",
     img_weight_heavy: "{size} — pesada, ralentiza la página (mejor por debajo de 500 KB).",
     img_unknown: "No disponible: no se pudo descargar el archivo de la imagen.",
     img_text_label: "Texto en la imagen",
     img_text_none: "No se detectó texto.",
-    img_text_ok: "El {pct} % de la imagen está cubierto por texto.",
     img_text_warn: "El {pct} % de la imagen está cubierto por texto — mantenlo por debajo del 10 %.",
     img_text_fail: "El {pct} % de la imagen está cubierto por texto — demasiado para Discover (más del 20 %).",
     img_ocr_error: "Falló la medición del texto: {msg}",
@@ -2916,7 +3008,6 @@ const T = {
     img_boxes_legend: "Recuadros rojos: texto detectado en la imagen.",
     img_ai_title: "Revisión de la foto por IA",
     img_ai_score: "Nota Discover",
-    img_ai_tips: "Sugerencias",
     img_emotion_label: "Emoción",
     img_emotion_strong: "Emoción fuerte",
     img_emotion_moderate: "Emoción moderada",
@@ -2928,9 +3019,6 @@ const T = {
     img_bg_clean: "Limpio",
     img_bg_busy: "Recargado",
     img_bg_distracting: "Molesto",
-    img_score_lost: "Puntos restados",
-    img_score_none: "Ningún punto restado",
-    img_score_hint: "Calculada por la página: 100 menos los puntos restados en cada criterio.",
     img_people_duo: "Dos personas",
     img_people_small_group: "Grupo pequeño",
     img_people_crowded: "Demasiada gente",
@@ -3551,6 +3639,8 @@ async function startAnalysis(mode) {
     const imageRunId = ++_imageRunId;
     const hero = doImage ? findHeroImage(doc, url) : null;
     const imagePromise = !doImage ? null : hero ? analyzeImage(hero).catch(() => ({ loadError: true, src: hero.url })) : Promise.resolve(null);
+    // Title review (dedicated AI call) runs with the AI options and fills its card when ready
+    const titlePromise = (doContent || doQuality) ? runTitleAnalysis(title, bodyText).catch(e => ({ error: e.message || String(e) })) : null;
 
     // Run AI calls in parallel — angles starts as soon as content analysis resolves
     setProgress(62, t('prog_ai'));
@@ -3603,16 +3693,31 @@ async function startAnalysis(mode) {
 
     setProgress(100, t('prog_done'));
     renderResults(url, title, discoverChecks, contentChecks, aiResult, spellResult, qualityResult, discoverAuthority, { aiError, spellError, qualityError }, bodyText, anglesResult, searchAuthority, newsHeadlines, { doContent, doSpell, doQuality, doAngles, doNews });
+    renderTitleCard(title, titlePromise ? 'pending' : null);
+    _summary.title = titleSummaryItems(title, null);
+    if (titlePromise) {
+      _summary.pending.title = true;
+      titlePromise.then(rep => {
+        if (imageRunId !== _imageRunId) return;
+        renderTitleCard(title, rep);
+        _summary.title = titleSummaryItems(title, rep);
+        _summary.pending.title = false;
+        refreshSummary();
+      });
+    }
     if (imagePromise) {
       document.getElementById('imageCard').style.display = 'block';
       document.getElementById('imageBody').innerHTML = `<div class="ai-unavailable">${t('prog_img')}</div>`;
-      renderSummary(_summaryBase, true);
+      _summary.pending.image = true;
       imagePromise.then(rep => {
         if (imageRunId !== _imageRunId) return;
         renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'));
-        renderSummary(_summaryBase.concat(imageSummaryItems(rep)), false);
+        _summary.image = imageSummaryItems(rep);
+        _summary.pending.image = false;
+        refreshSummary();
       });
     }
+    refreshSummary();
   } catch (err) {
     showError('Error: ' + err.message);
     document.getElementById('progressBar').classList.remove('active');
@@ -3879,19 +3984,20 @@ function ratioLabel(w, h) {
 function imageChecks(rep) {
   const checks = [];
   const { width: w, height: h } = rep;
-  checks.push({ label: t('img_dim_label'), status: w >= IMG_MIN_WIDTH ? 'ok' : 'fail', detail: t(w >= IMG_MIN_WIDTH ? 'img_dim_ok' : 'img_dim_small', { w, h }) });
+  // Green rows show the value only; the others say why
+  checks.push({ label: t('img_dim_label'), status: w >= IMG_MIN_WIDTH ? 'ok' : 'fail', detail: w >= IMG_MIN_WIDTH ? `${w} × ${h} px` : t('img_dim_small', { w, h }) });
   const r = w / h;
-  checks.push({ label: t('img_ratio_label'), status: r >= 1.3 && r <= 2.0 ? 'ok' : 'warning', detail: t(r >= 1.3 && r <= 2.0 ? 'img_ratio_ok' : 'img_ratio_bad', { ratio: ratioLabel(w, h) }) });
+  checks.push({ label: t('img_ratio_label'), status: r >= 1.3 && r <= 2.0 ? 'ok' : 'warning', detail: r >= 1.3 && r <= 2.0 ? ratioLabel(w, h) : t('img_ratio_bad', { ratio: ratioLabel(w, h) }) });
   const goodFormat = ['JPEG', 'WebP', 'AVIF', 'PNG'].includes(rep.format);
-  checks.push({ label: t('img_format_label'), status: rep.format === '?' ? 'a_verifier' : goodFormat ? 'ok' : 'warning', detail: rep.format === '?' ? t('img_unknown') : t(goodFormat ? 'img_format_ok' : 'img_format_warn', { format: rep.format }) });
+  checks.push({ label: t('img_format_label'), status: rep.format === '?' ? 'a_verifier' : goodFormat ? 'ok' : 'warning', detail: rep.format === '?' ? t('img_unknown') : goodFormat ? rep.format : t('img_format_warn', { format: rep.format }) });
   if (rep.bytes == null) checks.push({ label: t('img_weight_label'), status: 'a_verifier', detail: t('img_unknown') });
-  else checks.push({ label: t('img_weight_label'), status: rep.bytes <= IMG_MAX_BYTES ? 'ok' : 'warning', detail: t(rep.bytes <= IMG_MAX_BYTES ? 'img_weight_ok' : 'img_weight_heavy', { size: formatBytes(rep.bytes) }) });
+  else checks.push({ label: t('img_weight_label'), status: rep.bytes <= IMG_MAX_BYTES ? 'ok' : 'warning', detail: rep.bytes <= IMG_MAX_BYTES ? formatBytes(rep.bytes) : t('img_weight_heavy', { size: formatBytes(rep.bytes) }) });
   if (!rep.ocr) checks.push({ label: t('img_text_label'), status: 'a_verifier', detail: t('img_unknown') });
   else if (rep.ocr.error) checks.push({ label: t('img_text_label'), status: 'a_verifier', detail: t('img_ocr_error', { msg: rep.ocr.error }) });
   else {
     const pct = rep.ocr.percent;
     const status = pct > IMG_TEXT_FAIL ? 'fail' : pct > IMG_TEXT_WARN ? 'warning' : 'ok';
-    checks.push({ label: t('img_text_label'), status, detail: pct === 0 ? t('img_text_none') : t({ ok: 'img_text_ok', warning: 'img_text_warn', fail: 'img_text_fail' }[status], { pct }) });
+    checks.push({ label: t('img_text_label'), status, detail: pct === 0 ? t('img_text_none') : status === 'ok' ? t('img_text_pct', { pct }) : t(status === 'warning' ? 'img_text_warn' : 'img_text_fail', { pct }) });
   }
   return checks;
 }
@@ -3927,7 +4033,7 @@ function imageDiscoverScore(rep) {
 }
 
 function imageAiChecks(ai) {
-  const row = (label, status, value, comment) => ({ label, status, detail: value + (comment ? ' — ' + comment : '') });
+  const row = (label, status, value, comment) => ({ label, status, detail: value + (status !== 'ok' && comment ? ' — ' + comment : '') });
   const emo = ai.emotion?.level, fr = ai.people?.framing, bg = ai.background?.status, sh = ai.sharpness?.status, ov = ai.text_overlay?.kind;
   return [
     row(t('img_emotion_label'), { strong: 'ok', moderate: 'warning' }[emo] || 'fail', t('img_emotion_' + (emo || 'none')), ai.emotion?.comment),
@@ -3984,16 +4090,9 @@ function renderImageReport(el, rep, countEl) {
   if (!hasAi) {
     html += `<div class="ai-unavailable">${t('ai_unavailable')}${rep.ai?.error ? ' <span class="ai-unavailable-detail">(' + esc(rep.ai.error) + ')</span>' : ''}</div>`;
   } else {
-    const lostText = verdict.lost.length
-      ? t('img_score_lost') + ' : ' + verdict.lost.map(l => `${l.label} −${l.pts}`).join(' · ')
-      : t('img_score_none');
-    html += `<div class="check-row"><div class="status-dot ${verdict.status}"></div><div class="check-label">${esc(t('img_ai_score'))}</div><div class="check-detail"><strong>${verdict.score}/100</strong>${rep.ai.summary ? ' — ' + esc(rep.ai.summary) : ''}<div class="img-score-lost">${esc(lostText)}</div><div class="img-score-lost">${esc(t('img_score_hint'))}</div></div></div>`;
+    const why = verdict.status !== 'ok' && rep.ai.summary ? ' — ' + esc(rep.ai.summary) : '';
+    html += `<div class="check-row"><div class="status-dot ${verdict.status}"></div><div class="check-label">${esc(t('img_ai_score'))}</div><div class="check-detail"><strong>${verdict.score}/100</strong>${why}</div></div>`;
     html += checkRowsHtml(aiChecks);
-    const rank = { high: 0, medium: 1, low: 2 };
-    const tips = (rep.ai.suggestions || []).filter(s => s && (s.text || typeof s === 'string'))
-      .map(s => typeof s === 'string' ? { text: s } : s)
-      .sort((a, b) => (rank[a.impact] ?? 3) - (rank[b.impact] ?? 3));
-    if (tips.length) html += `<div class="img-tips"><strong>${t('img_ai_tips')}</strong><ul>${tips.map(s => `<li>${rank[s.impact] != null ? `<span class="fluff-severity ${s.impact}">${t('fluff_severity_' + s.impact)}</span> ` : ''}${esc(s.text)}</li>`).join('')}</ul></div>`;
   }
   html += `</div>`;
   el.innerHTML = html;
@@ -6864,9 +6963,8 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   document.getElementById('discoverCount').innerHTML = `<span class="tl-dot ${discoverColor}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: discoverOk, n: discoverTotal })}`;
   // Details embed values read from the analysed page (author, canonical, og:image...) — always escape
   document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
-  renderTitleCard(title, qualityResult, aiResult);
-  _summaryBase = buildSummaryItems(discoverChecks, contentChecks, qualityResult, aiResult, spellResult);
-  renderSummary(_summaryBase, false);
+  _summary = { base: buildSummaryItems(discoverChecks, contentChecks, qualityResult, aiResult, spellResult), title: [], image: [], pending: { title: false, image: false } };
+  refreshSummary();
   document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
 
   const aiSection = document.getElementById('aiSection');
@@ -6954,7 +7052,9 @@ const FLUFF_COLOR_LABELS = {
 // ========== SUMMARY ==========
 // Everything that is not green, gathered at the top so the editor sees first what to change
 const SUMMARY_ORDER = { discover: 1, title: 2, image: 3, structure: 4, quality: 5, spell: 6, editorial: 7, ai: 8 };
-let _summaryBase = [];
+// Title and image reviews finish after the rest: their items are added when they arrive
+let _summary = { base: [], title: [], image: [], pending: { title: false, image: false } };
+function refreshSummary() { renderSummary(_summary.base.concat(_summary.title, _summary.image), _summary.pending); }
 
 function summaryFromChecks(sec, checks, tag) {
   return checks.filter(c => c.status === 'fail' || c.status === 'warning')
@@ -6962,14 +7062,8 @@ function summaryFromChecks(sec, checks, tag) {
 }
 
 function buildSummaryItems(discoverChecks, contentChecks, q, ai, spellResult) {
+  // Title items come from the dedicated title review (titleSummaryItems)
   const items = summaryFromChecks('discover', discoverChecks);
-  const a = q?.title_alignment, b = q?.title_balance, coh = ai?.lecture_editoriale?.titre_coherent;
-  if (a?.status && a.status !== 'aligned')
-    items.push({ level: a.status === 'misaligned' ? 'fix' : 'improve', sec: 'title', text: t('quality_title_align') + ' — ' + t(a.status === 'partial' ? 'quality_align_partial' : 'quality_align_misaligned') + (a.comment ? '. ' + a.comment : '') });
-  if (b?.status && b.status !== 'balanced')
-    items.push({ level: 'fix', sec: 'title', text: t('quality_balance') + ' — ' + t(b.status === 'clickbait' ? 'quality_balance_clickbait' : 'quality_balance_bland') + (b.suggestion ? '. ' + t('summary_title_suggestion', { title: b.suggestion }) : '') });
-  if (coh && coh.statut !== 'ok')
-    items.push({ level: coh.statut === 'fail' ? 'fix' : 'improve', sec: 'title', text: t('ai_title_coherent') + ' — ' + (coh.commentaire || '') });
   items.push(...summaryFromChecks('structure', contentChecks));
   if (q) {
     const fluff = q.fluff || [];
@@ -6992,10 +7086,16 @@ function imageSummaryItems(rep) {
   if (rep.loadError) return [{ level: 'improve', sec: 'image', text: t('img_load_error') }];
   const hasAi = rep.ai && !rep.ai.error;
   const tag = hasAi ? imageDiscoverScore(rep).score + '/100' : '';
-  return summaryFromChecks('image', imageChecks(rep).concat(hasAi ? imageAiChecks(rep.ai) : []), tag);
+  const items = summaryFromChecks('image', imageChecks(rep).concat(hasAi ? imageAiChecks(rep.ai) : []), tag);
+  // The photo editor's advice lives here rather than in the image card: what to change, high impact first
+  if (hasAi) (rep.ai.suggestions || []).filter(x => x && (x.text || typeof x === 'string')).forEach(x => {
+    const text = typeof x === 'string' ? x : x.text;
+    items.push({ level: x.impact === 'high' ? 'fix' : 'improve', sec: 'image', tag, text: t('summary_suggestion', { text }) });
+  });
+  return items;
 }
 
-function renderSummary(items, imagePending) {
+function renderSummary(items, pending) {
   document.getElementById('summaryCard').style.display = 'block';
   const sorted = items.slice().sort((x, y) => SUMMARY_ORDER[x.sec] - SUMMARY_ORDER[y.sec]);
   const fix = sorted.filter(i => i.level === 'fix'), improve = sorted.filter(i => i.level === 'improve');
@@ -7003,66 +7103,170 @@ function renderSummary(items, imagePending) {
   let html = '';
   if (fix.length) html += `<div class="summary-group"><h4><span class="tl-dot red"></span> ${t('summary_fix')} (${fix.length})</h4>${list(fix)}</div>`;
   if (improve.length) html += `<div class="summary-group"><h4><span class="tl-dot amber"></span> ${t('summary_improve')} (${improve.length})</h4>${list(improve)}</div>`;
-  if (!items.length && !imagePending) html = `<div class="summary-none"><span class="tl-dot green"></span> ${t('summary_none')}</div>`;
-  if (imagePending) html += `<div class="img-score-lost">${t('summary_image_pending')}</div>`;
+  const running = ['title', 'image'].filter(k => pending[k]).map(k => t('summary_sec_' + k).toLowerCase());
+  if (!items.length && !running.length) html = `<div class="summary-none"><span class="tl-dot green"></span> ${t('summary_none')}</div>`;
+  if (running.length) html += `<div class="summary-pending">${esc(t('summary_pending', { what: running.join(', ') }))}</div>`;
   document.getElementById('summaryBody').innerHTML = html;
   const color = fix.length ? 'red' : improve.length ? 'amber' : 'green';
   document.getElementById('summaryCount').innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${t('summary_count', { fix: fix.length, improve: improve.length })}`;
 }
 
-// Title analysis gathered in one card: the headline matters most for Discover, so it sits right under eligibility
-function renderTitleCard(title, q, ai) {
-  const card = document.getElementById('titleCard');
-  const body = document.getElementById('titleBody');
-  card.style.display = 'block';
-  const a = q?.title_alignment || {};
-  const b = q?.title_balance || {};
-  const coh = ai?.lecture_editoriale?.titre_coherent;
-  const suggestions = ai?.discover?.titre_suggestions || [];
-  const statuses = [];
+// ========== TITLE REVIEW ==========
+// Dedicated call: titles were a by-product of long prompts and came out weak. GPT-5 writes better ones;
+// GPT-4o takes over when the key has no access to it
+const TITLE_MODEL = 'gpt-5';
+const TITLE_SEARCH_MAX = 70;   // Google Search shows about 60-65 characters of a title
+const TITLE_MAX = 100;
 
-  let html = `<div class="check-row"><div class="status-dot a_verifier"></div><div class="check-label" style="font-weight:600">${t('title_analyzed')}</div><div class="check-detail"><strong>${esc(title || '—')}</strong> <span style="color:var(--text-dim)">· ${t('title_chars', { n: (title || '').length })}</span></div></div>`;
+async function runTitleAnalysis(title, bodyText) {
+  const paragraphs = bodyText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
+  const lead = paragraphs[0] || '';
+  const excerpt = bodyText.split(/\s+/).slice(0, 1500).join(' ');
+  const langName = LANG === 'fr' ? 'French' : LANG === 'pt-br' ? 'Brazilian Portuguese' : LANG === 'es' ? 'Spanish' : 'English';
+  const system = `You are the head of SEO and audience for a network of sports news sites. You review an article's headline for Google Discover and Google Search, then write better headlines.
 
-  // Title & lead alignment (Google Quality Rater)
-  if (a.status) {
-    statuses.push(a.status === 'aligned');
-    const alignColor = a.status === 'aligned' ? 'green' : a.status === 'partial' ? 'amber' : 'red';
-    const alignLabel = a.status === 'aligned' ? t('quality_align_ok') : a.status === 'partial' ? t('quality_align_partial') : t('quality_align_misaligned');
-    html += `<div class="check-row"><div class="status-dot ${a.status==='aligned'?'ok':'fail'}"></div><div class="check-label" style="font-weight:600">${t('quality_title_align')}</div><div class="check-detail"><span class="tl-dot ${alignColor}" style="width:8px;height:8px"></span> ${alignLabel}</div></div>`;
-    if (a.comment) html += `<div style="padding:0 16px 12px 32px;color:var(--text-muted);font-size:13px">${esc(a.comment)}</div>`;
+How Google treats headlines:
+- Search: the main query (who + what: player, club, competition, transfer, injury...) must appear, ideally in the first words. Google shows about 60-65 characters, so the key information comes first. One clear subject, no keyword stuffing.
+- Discover: readers scroll, there is no query. A headline earns the tap with a precise, concrete promise: named people or clubs, a striking figure (fee, age, stat, date, ranking), a vivid or emotional word (blow, relief, anger, record, surprise...), a clear stake. Google's Discover guidelines ban clickbait: no withheld key information ("you won't believe...", "this player..."), no exaggeration, no promise the article does not keep, no all caps or sensational punctuation.
+- Figures and emotion are a plus, never mandatory: do not force them when the article has none.
+
+Your review:
+- keywords: the query a reader would type to find this article, where it sits in the headline, and important names from the article that are missing from it.
+- numbers: whether the headline contains a figure, and the most striking figure from the article that could be used (only one that appears in the article).
+- emotion: how vivid or emotional the wording is.
+- alignment with the lead paragraph, balance (clickbait / bland / balanced), and whether the article keeps the headline's promise.
+
+Your headlines:
+- Write 5 headlines in the language of the original headline, in the site's style (keep a prefix such as "Mercato OM :" when the original has one).
+- Use only facts from the article: never invent a figure, a quote, a club or a decision, and keep its level of certainty (if the article says "could", never write "has signed").
+- 2 written for Search (main query in the first words, 65 characters or fewer), 2 for Discover (named entity plus a concrete hook, a figure or an emotion when the article supports it, 60 to 90 characters), 1 that works for both.
+- Each one must beat the original on at least one criterion; say which in "why".
+- Natural capitalisation for the language (in French, only the first word and proper nouns take a capital).
+
+Answer only through the title_report tool. Write every comment and "why" in ${langName}; write the headlines in the article's language.`;
+  const comment = { type: 'string', description: 'Short. Empty when there is nothing to fix' };
+  const tool = {
+    type: 'function',
+    function: {
+      name: 'title_report',
+      description: 'Headline review for Google Discover and Search, with better headlines',
+      parameters: {
+        type: 'object',
+        properties: {
+          keywords: { type: 'object', properties: {
+            main_keyword: { type: 'string', description: 'The query a reader would type in Google to find this article, in the article language' },
+            position: { type: 'string', enum: ['start', 'middle', 'end', 'absent'], description: 'Where that query (or its key name) sits in the headline; start = within the first five words' },
+            missing_entities: { type: 'array', items: { type: 'string' }, description: 'Important names from the article missing from the headline; empty if none' },
+            comment }, required: ['main_keyword', 'position', 'missing_entities', 'comment'] },
+          numbers: { type: 'object', properties: {
+            in_title: { type: 'boolean' },
+            available: { type: 'string', description: 'A striking figure from the article that could go in the headline; empty if none' },
+            comment }, required: ['in_title', 'available', 'comment'] },
+          emotion: { type: 'object', properties: {
+            level: { type: 'string', enum: ['strong', 'some', 'none'] },
+            words: { type: 'array', items: { type: 'string' }, description: 'The vivid or emotional words of the headline' },
+            comment }, required: ['level', 'words', 'comment'] },
+          alignment: { type: 'object', properties: {
+            status: { type: 'string', enum: ['aligned', 'partial', 'misaligned'], description: 'Headline versus lead paragraph' },
+            comment }, required: ['status', 'comment'] },
+          balance: { type: 'object', properties: {
+            status: { type: 'string', enum: ['balanced', 'bland', 'clickbait'] },
+            comment }, required: ['status', 'comment'] },
+          promise: { type: 'object', properties: {
+            status: { type: 'string', enum: ['kept', 'overstated', 'misleading'], description: 'Does the article deliver what the headline promises' },
+            comment }, required: ['status', 'comment'] },
+          suggestions: { type: 'array', description: 'Exactly 5 headlines', items: { type: 'object', properties: {
+            title: { type: 'string' },
+            angle: { type: 'string', enum: ['search', 'discover', 'both'] },
+            why: { type: 'string', description: 'What makes it better than the original, in one sentence' } }, required: ['title', 'angle', 'why'] } }
+        },
+        required: ['keywords', 'numbers', 'emotion', 'alignment', 'balance', 'promise', 'suggestions']
+      }
+    }
+  };
+  const ask = async model => {
+    const data = await callOpenAI({
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: `HEADLINE: ${title}\n\nLEAD: ${lead}\n\nARTICLE (excerpt):\n${excerpt}` }
+      ],
+      tools: [tool],
+      tool_choice: { type: 'function', function: { name: 'title_report' } },
+      // Reasoning models refuse a custom temperature
+      ...(model === OPENAI_MODEL ? { temperature: 0.5 } : { reasoning_effort: 'low' })
+    });
+    const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!tc) throw new Error(t('err_no_tool'));
+    return { ...JSON.parse(tc.function.arguments), model };
+  };
+  try { return await ask(TITLE_MODEL); }
+  catch (e) {
+    console.warn(`Title review with ${TITLE_MODEL} failed, retrying with ${OPENAI_MODEL}:`, e.message);
+    return await ask(OPENAI_MODEL);
   }
+}
 
-  // Title balance: clickbait / bland / balanced, with a suggested title
-  if (b.status) {
-    statuses.push(b.status === 'balanced');
-    const balanceColor = b.status === 'balanced' ? 'green' : 'red';
-    const balanceLabel = b.status === 'clickbait' ? t('quality_balance_clickbait') : b.status === 'bland' ? t('quality_balance_bland') : t('quality_balance_ok');
-    html += `<div class="check-row"><div class="status-dot ${b.status==='balanced'?'ok':'fail'}"></div><div class="check-label" style="font-weight:600">${t('quality_balance')}</div><div class="check-detail"><span class="tl-dot ${balanceColor}" style="width:8px;height:8px"></span> ${balanceLabel}</div></div>`;
-    if (b.comment) html += `<div style="padding:0 16px 4px 32px;color:var(--text-muted);font-size:13px">${esc(b.comment)}</div>`;
-    if (b.suggestion && b.status !== 'balanced') html += `<div style="padding:0 16px 12px 32px;font-size:13px;display:flex;align-items:center;gap:6px"><span class="spell-arrow">→</span><span style="font-weight:600">${t('quality_balance_suggestion')}:</span> <span class="spell-correction">${esc(b.suggestion)}</span></div>`;
+// Rows of the title card. "bonus" rows (figure, emotion) are never a fault: green when present, grey otherwise
+function titleChecks(title, rep) {
+  const len = (title || '').length;
+  const rows = [{ label: t('title_len_label'), status: len <= TITLE_SEARCH_MAX ? 'ok' : len <= TITLE_MAX ? 'warning' : 'fail', value: t('title_chars', { n: len }), why: len <= TITLE_SEARCH_MAX ? '' : t(len <= TITLE_MAX ? 'title_len_long' : 'title_len_too_long') }];
+  if (!rep || rep === 'pending' || rep.error) return rows;
+  const k = rep.keywords || {}, missing = k.missing_entities || [];
+  rows.push({ label: t('title_kw_label'), status: k.position === 'absent' ? 'fail' : (k.position === 'end' || missing.length) ? 'warning' : 'ok',
+    value: (k.main_keyword ? '"' + k.main_keyword + '" ' : '') + t('title_kw_' + (k.position || 'absent')),
+    why: [missing.length ? t('title_kw_missing', { list: missing.join(', ') }) : '', k.comment].filter(Boolean).join(' ') });
+  const n = rep.numbers || {};
+  rows.push({ label: t('title_num_label'), bonus: true, status: n.in_title ? 'ok' : 'a_verifier', value: t(n.in_title ? 'title_num_yes' : 'title_num_no'),
+    why: n.available ? t('title_num_available', { n: n.available }) : (n.comment || '') });
+  const e = rep.emotion || {};
+  rows.push({ label: t('title_emo_label'), bonus: true, status: e.level === 'none' ? 'a_verifier' : 'ok',
+    value: t('title_emo_' + (e.level || 'none')) + (e.level !== 'none' && e.words?.length ? ' : ' + e.words.join(', ') : ''), why: e.comment || '' });
+  const a = rep.alignment || {}, b = rep.balance || {}, pr = rep.promise || {};
+  rows.push({ label: t('quality_title_align'), status: { aligned: 'ok', partial: 'warning' }[a.status] || 'fail',
+    value: t(a.status === 'aligned' ? 'quality_align_ok' : a.status === 'partial' ? 'quality_align_partial' : 'quality_align_misaligned'), why: a.comment });
+  rows.push({ label: t('quality_balance'), status: { balanced: 'ok', bland: 'warning' }[b.status] || 'fail',
+    value: t(b.status === 'balanced' ? 'quality_balance_ok' : b.status === 'bland' ? 'quality_balance_bland' : 'quality_balance_clickbait'), why: b.comment });
+  rows.push({ label: t('title_promise_label'), status: { kept: 'ok', overstated: 'warning' }[pr.status] || 'fail',
+    value: t('title_promise_' + (pr.status || 'misleading')), why: pr.comment });
+  return rows;
+}
+
+// A green row needs no explanation; anything else says why
+function verdictRowsHtml(rows) {
+  return rows.map(r => `<div class="check-row"><div class="status-dot ${r.status}"></div><div class="check-label">${esc(r.label)}</div><div class="check-detail">${esc(r.value)}${r.status !== 'ok' && r.why ? `<div class="check-why">${esc(r.why)}</div>` : ''}</div></div>`).join('');
+}
+
+function titleSummaryItems(title, rep) {
+  const items = titleChecks(title, rep).filter(r => r.status === 'fail' || r.status === 'warning')
+    .map(r => ({ level: r.status === 'fail' ? 'fix' : 'improve', sec: 'title', text: r.label + ' — ' + r.value + (r.why ? '. ' + r.why : '') }));
+  const best = rep && rep !== 'pending' && !rep.error ? (rep.suggestions || [])[0] : null;
+  if (items.length && best?.title) items.push({ level: 'improve', sec: 'title', text: t('summary_title_suggestion', { title: best.title }) });
+  return items;
+}
+
+// rep: the title review, 'pending' while it runs, null when the AI options are unticked
+function renderTitleCard(title, rep) {
+  document.getElementById('titleCard').style.display = 'block';
+  const rows = titleChecks(title, rep);
+  let html = `<div class="check-row"><div class="status-dot a_verifier"></div><div class="check-label">${t('title_analyzed')}</div><div class="check-detail"><strong>${esc(title || '—')}</strong></div></div>`;
+  html += verdictRowsHtml(rows);
+  if (rep === 'pending') html += `<div class="summary-pending">${t('title_pending')}</div>`;
+  else if (!rep) html += `<div class="ai-unavailable" style="margin-top:8px">${esc(t('title_no_ai'))}</div>`;
+  else if (rep.error) html += `<div class="ai-unavailable" style="margin-top:8px">${t('ai_unavailable')} <span class="ai-unavailable-detail">(${esc(rep.error)})</span></div>`;
+  else if (rep.suggestions?.length) {
+    const badge = rep.model === OPENAI_MODEL ? 'GPT-4o' : rep.model.toUpperCase();
+    html += `<div class="title-suggestions"><h4>💡 ${t('title_suggestions_title')} <span class="ai-badge">${esc(badge)}</span></h4><ol>`;
+    html += rep.suggestions.map(sg => `<li><div class="ts-title">${esc(sg.title)}</div><div class="ts-meta"><span class="ts-angle ${esc(sg.angle)}">${t('title_angle_' + (sg.angle || 'both'))}</span> · ${t('title_chars', { n: (sg.title || '').length })}</div>${sg.why ? `<div class="ts-why">${esc(sg.why)}</div>` : ''}</li>`).join('');
+    html += `</ol></div>`;
   }
-
-  // Title promises no more than the article delivers (AI content analysis)
-  if (coh) {
-    statuses.push(coh.statut === 'ok');
-    const tc = coh.statut === 'ok' ? 'green' : coh.statut === 'warning' ? 'amber' : 'red';
-    const dot = coh.statut === 'ok' ? 'ok' : coh.statut === 'warning' ? 'warning' : 'fail';
-    html += `<div class="check-row"><div class="status-dot ${dot}"></div><div class="check-label" style="font-weight:600">${t('ai_title_coherent')}</div><div class="check-detail"><span class="tl-dot ${tc}" style="width:8px;height:8px"></span> ${esc(coh.commentaire || '')}</div></div>`;
-  }
-
-  // Alternative titles proposed by the Discover analysis
-  if (suggestions.length) {
-    html += `<div class="ai-field" style="flex-direction:column;gap:6px;padding-top:12px"><div class="ai-field-label" style="display:flex;align-items:center;gap:6px">💡 ${t('ai_title_suggestions')}</div>`;
-    html += suggestions.map(s => `<div style="display:flex;align-items:flex-start;gap:6px;padding:6px 10px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:13px"><span class="spell-arrow" style="margin-top:1px">→</span><span style="font-weight:500">${esc(s)}</span></div>`).join('');
-    html += `</div>`;
-  }
-
-  if (!statuses.length && !suggestions.length) html += `<div class="ai-unavailable" style="margin-top:8px">${esc(t('title_no_ai'))}</div>`;
-
-  const okCount = statuses.filter(Boolean).length;
-  const color = !statuses.length ? '' : okCount === statuses.length ? 'green' : okCount >= statuses.length - 1 ? 'amber' : 'red';
-  document.getElementById('titleCount').innerHTML = statuses.length ? `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: okCount, n: statuses.length })}` : '';
-  body.innerHTML = html;
+  document.getElementById('titleBody').innerHTML = html;
+  // Bonus rows (figure, emotion) never count against the title
+  const judged = rows.filter(r => !r.bonus);
+  const okCount = judged.filter(r => r.status === 'ok').length;
+  const total = judged.length;
+  const color = okCount === total ? 'green' : okCount >= total - 1 ? 'amber' : 'red';
+  document.getElementById('titleCount').innerHTML = rep === 'pending' ? '' : `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: okCount, n: total })}`;
 }
 
 function renderQuality(q, bodyText) {
