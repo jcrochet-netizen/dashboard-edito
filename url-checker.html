@@ -553,24 +553,27 @@ body {
 @media (max-width: 640px) { .img-report { grid-template-columns: 1fr; } }
 
 /* KPI ROW */
+/* All KPI cards on one line, whatever their number */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
   margin-bottom: 16px;
 }
 .kpi-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 16px;
+  padding: 12px 6px;
   text-align: center;
   box-shadow: var(--shadow);
 }
 .kpi-value {
-  font-size: 28px; font-weight: 700; line-height: 1;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 20px; font-weight: 700; line-height: 1.1;
+  display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: wrap;
 }
+.kpi-value .tl-dot { width: 8px; height: 8px; }
 .kpi-value.green { color: var(--green); }
 .kpi-value.amber { color: var(--amber); }
 .kpi-value.red { color: var(--red); }
@@ -585,10 +588,23 @@ body {
 .tl-dot.red { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
 .tl-dot.blue { background: var(--blue); box-shadow: 0 0 6px rgba(59,130,246,0.4); }
 .kpi-label {
-  font-size: 11px; color: var(--text-muted);
+  font-size: 10px; color: var(--text-muted);
   margin-top: 6px; text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px; line-height: 1.3; overflow-wrap: break-word;
 }
+/* One line needs the full desktop width: below it, 4 cards per row (2 on phones, see 600px rule) */
+@media (max-width: 768px) {
+  .kpi-row { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* SUMMARY */
+.summary-group { padding: 10px 0 4px; }
+.summary-group h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.summary-list { list-style: none; margin: 0; padding: 0; }
+.summary-list li { font-size: 13px; color: var(--text); padding: 6px 0 6px 18px; border-bottom: 1px solid var(--surface-2); line-height: 1.45; }
+.summary-list li:last-child { border-bottom: none; }
+.summary-section { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted); background: var(--surface-2); border-radius: 3px; padding: 1px 6px; margin-right: 6px; }
+.summary-none { font-size: 13px; padding: 12px 0; display: flex; align-items: center; gap: 8px; }
 
 /* AI SECTION */
 .ai-section {
@@ -819,7 +835,7 @@ body {
   .check-row { flex-wrap: wrap; }
   .ai-field { flex-direction: column; gap: 2px; }
   .ai-field-label { min-width: auto; }
-  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { padding: 12px 16px; gap: 8px; flex-wrap: wrap; }
   .container { padding: 20px 16px 40px; }
   .spell-error-row { flex-wrap: wrap; }
@@ -1223,6 +1239,14 @@ body {
   </div>
 
   <div class="results" id="results">
+    <div class="kpi-row" id="kpiRow"></div>
+    <div class="card summary-card" id="summaryCard" style="display:none">
+      <div class="card-header" onclick="toggleCard(this)">
+        <h3>📋 <span data-t="summary_title">Summary: what to fix</span> <span class="count" id="summaryCount"></span></h3>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body" id="summaryBody"></div>
+    </div>
     <div class="result-header">
       <div>
         <div class="result-title" id="resultTitle"></div>
@@ -1234,7 +1258,6 @@ body {
       <button class="export-btn" onclick="exportAll('json')" title="Export all as JSON">📥 <span data-t="export_all">Export all</span> (JSON)</button>
       <button class="export-btn" onclick="openPdfModal()" title="Download PDF" style="background:var(--accent-glow);color:var(--accent);border-color:var(--accent)">📄 <span data-t="export_pdf">PDF One-Pager</span></button>
     </div>
-    <div class="kpi-row" id="kpiRow"></div>
     <div class="card" id="discoverCard">
       <div class="card-header" onclick="toggleCard(this)">
         <h3>🔍 <span data-t="discover_title">Discover Eligibility</span> <span class="count" id="discoverCount"></span></h3>
@@ -1482,6 +1505,25 @@ const T = {
     prog_ai: "Running AI analysis (GPT-4o)...",
     prog_done: "Done!",
     kpi_discover: "Discover checks OK",
+    summary_title: "Summary: what to fix",
+    summary_fix: "To fix first",
+    summary_improve: "To improve",
+    summary_none: "Nothing to fix: every check is green.",
+    summary_count: "{fix} to fix · {improve} to improve",
+    summary_image_pending: "Image analysis in progress, its points will be added here.",
+    summary_title_suggestion: "Suggested title: {title}",
+    summary_fluff_high: "{n} high-impact filler passage(s) to cut",
+    summary_fluff_medium: "{n} filler passage(s) to tighten",
+    summary_repeated: "{n} fact(s) repeated without new information",
+    summary_spell: "{n} spelling or grammar mistake(s)",
+    summary_sec_discover: "Discover",
+    summary_sec_title: "Title",
+    summary_sec_image: "Image",
+    summary_sec_structure: "Structure",
+    summary_sec_quality: "Quality",
+    summary_sec_spell: "Spelling",
+    summary_sec_editorial: "Editorial",
+    summary_sec_ai: "AI Discover",
     title_card: "Title analysis",
     title_analyzed: "Title",
     title_chars: "{n} characters",
@@ -1600,8 +1642,8 @@ const T = {
     news_no_results: 'No {entity} news in the last 7 days',
     news_no_results_generic: 'No relevant news in the last 7 days',
     err_empty_html: "Paste HTML code to analyze.",
-    kpi_spell: "Spelling",
-    kpi_quality: "Quality",
+    kpi_spell: "Spelling mistakes",
+    kpi_quality: "Quality issues",
     // Discover Insights
     discover_insights_title: "AI Discover Insights",
     settings_sheet_label: "Discover Data (Google Sheets URL)",
@@ -1861,6 +1903,25 @@ const T = {
     prog_ai: "Analyse IA en cours (GPT-4o)...",
     prog_done: "Terminé !",
     kpi_discover: "critères Discover OK",
+    summary_title: "Résumé : ce qu'il faut corriger",
+    summary_fix: "À corriger en priorité",
+    summary_improve: "À améliorer",
+    summary_none: "Rien à corriger : tous les contrôles sont au vert.",
+    summary_count: "{fix} à corriger · {improve} à améliorer",
+    summary_image_pending: "Analyse de l'image en cours, ses points s'ajouteront ici.",
+    summary_title_suggestion: "Titre suggéré : {title}",
+    summary_fluff_high: "{n} passage(s) de remplissage à fort impact à supprimer",
+    summary_fluff_medium: "{n} passage(s) de remplissage à resserrer",
+    summary_repeated: "{n} fait(s) répété(s) sans information nouvelle",
+    summary_spell: "{n} faute(s) d'orthographe ou de grammaire",
+    summary_sec_discover: "Discover",
+    summary_sec_title: "Titre",
+    summary_sec_image: "Image",
+    summary_sec_structure: "Structure",
+    summary_sec_quality: "Qualité",
+    summary_sec_spell: "Orthographe",
+    summary_sec_editorial: "Éditorial",
+    summary_sec_ai: "Discover (IA)",
     title_card: "Analyse du titre",
     title_analyzed: "Titre",
     title_chars: "{n} caractères",
@@ -1975,8 +2036,8 @@ const T = {
     news_no_results: 'Aucune actualite {entity} ces 7 derniers jours',
     news_no_results_generic: 'Aucune actualite pertinente ces 7 derniers jours',
     err_empty_html: "Collez du code HTML à analyser.",
-    kpi_spell: "Orthographe",
-    kpi_quality: "Qualité",
+    kpi_spell: "Fautes d'orthographe",
+    kpi_quality: "Problèmes de qualité",
     discover_insights_title: "Discover IA Insights",
     settings_sheet_label: "Données Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets avec un onglet par site. Colonnes : URL, Clics, Impressions, CTR.",
@@ -2232,6 +2293,25 @@ const T = {
     prog_ai: "Análise IA em andamento (GPT-4o)...",
     prog_done: "Concluído!",
     kpi_discover: "critérios Discover OK",
+    summary_title: "Resumo: o que corrigir",
+    summary_fix: "Corrigir primeiro",
+    summary_improve: "A melhorar",
+    summary_none: "Nada a corrigir: todas as verificações estão verdes.",
+    summary_count: "{fix} a corrigir · {improve} a melhorar",
+    summary_image_pending: "Análise da imagem em andamento, os pontos dela serão adicionados aqui.",
+    summary_title_suggestion: "Título sugerido: {title}",
+    summary_fluff_high: "{n} trecho(s) de enchimento de alto impacto para cortar",
+    summary_fluff_medium: "{n} trecho(s) de enchimento para enxugar",
+    summary_repeated: "{n} fato(s) repetido(s) sem informação nova",
+    summary_spell: "{n} erro(s) de ortografia ou gramática",
+    summary_sec_discover: "Discover",
+    summary_sec_title: "Título",
+    summary_sec_image: "Imagem",
+    summary_sec_structure: "Estrutura",
+    summary_sec_quality: "Qualidade",
+    summary_sec_spell: "Ortografia",
+    summary_sec_editorial: "Editorial",
+    summary_sec_ai: "Discover (IA)",
     title_card: "Análise do título",
     title_analyzed: "Título",
     title_chars: "{n} caracteres",
@@ -2328,8 +2408,8 @@ const T = {
     news_1_day_ago: "há 1 dia",
     news_days_ago: "há {n} dias",
     err_empty_html: "Cole o código HTML para analisar.",
-    kpi_spell: "Ortografia",
-    kpi_quality: "Qualidade",
+    kpi_spell: "Erros de ortografia",
+    kpi_quality: "Problemas de qualidade",
     discover_insights_title: "Discover IA Insights",
     settings_sheet_label: "Dados Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets com uma aba por site. Colunas: URL, Cliques, Impressões, CTR.",
@@ -2604,6 +2684,25 @@ const T = {
     prog_ai: "Análisis IA en curso (GPT-4o)...",
     prog_done: "¡Listo!",
     kpi_discover: "criterios Discover OK",
+    summary_title: "Resumen: qué corregir",
+    summary_fix: "Corregir primero",
+    summary_improve: "A mejorar",
+    summary_none: "Nada que corregir: todas las comprobaciones están en verde.",
+    summary_count: "{fix} a corregir · {improve} a mejorar",
+    summary_image_pending: "Análisis de la imagen en curso, sus puntos se añadirán aquí.",
+    summary_title_suggestion: "Título sugerido: {title}",
+    summary_fluff_high: "{n} pasaje(s) de relleno de alto impacto que eliminar",
+    summary_fluff_medium: "{n} pasaje(s) de relleno que ajustar",
+    summary_repeated: "{n} dato(s) repetido(s) sin información nueva",
+    summary_spell: "{n} error(es) de ortografía o gramática",
+    summary_sec_discover: "Discover",
+    summary_sec_title: "Título",
+    summary_sec_image: "Imagen",
+    summary_sec_structure: "Estructura",
+    summary_sec_quality: "Calidad",
+    summary_sec_spell: "Ortografía",
+    summary_sec_editorial: "Editorial",
+    summary_sec_ai: "Discover (IA)",
     title_card: "Análisis del título",
     title_analyzed: "Título",
     title_chars: "{n} caracteres",
@@ -2699,8 +2798,8 @@ const T = {
     news_hours_ago: "hace {n}h",
     news_1_day_ago: "hace 1 día",
     news_days_ago: "hace {n} días",
-    kpi_spell: "Ortografía",
-    kpi_quality: "Calidad",
+    kpi_spell: "Errores ortográficos",
+    kpi_quality: "Problemas de calidad",
     discover_insights_title: "Discover IA Insights",
     settings_sheet_label: "Datos Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets con una pestaña por sitio. Columnas: URL, Clics, Impresiones, CTR.",
@@ -3402,6 +3501,7 @@ async function startAnalysis(mode) {
   document.getElementById('newsCard').style.display = 'none';
   document.getElementById('imageCard').style.display = 'none';
   document.getElementById('titleCard').style.display = 'none';
+  document.getElementById('summaryCard').style.display = 'none';
 
   try {
     if (mode === 'url') {
@@ -3506,8 +3606,11 @@ async function startAnalysis(mode) {
     if (imagePromise) {
       document.getElementById('imageCard').style.display = 'block';
       document.getElementById('imageBody').innerHTML = `<div class="ai-unavailable">${t('prog_img')}</div>`;
+      renderSummary(_summaryBase, true);
       imagePromise.then(rep => {
-        if (imageRunId === _imageRunId) renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'));
+        if (imageRunId !== _imageRunId) return;
+        renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'));
+        renderSummary(_summaryBase.concat(imageSummaryItems(rep)), false);
       });
     }
   } catch (err) {
@@ -6749,11 +6852,11 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   }
   if (spellResult) {
     const errCount = spellResult.errors?.length || 0;
-    kpis.push({ label: t('kpi_spell'), value: errCount === 0 ? 'OK' : errCount + ' issue(s)', color: errCount===0?'green':errCount<=3?'amber':'red' });
+    kpis.push({ label: t('kpi_spell'), value: errCount, color: errCount===0?'green':errCount<=3?'amber':'red' });
   }
   if (qualityResult) {
     const qIssues = (qualityResult.fluff || []).filter(f => f.severity === 'high' || f.severity === 'medium').length + (qualityResult.article_identity?.repeated_facts?.length || 0);
-    kpis.push({ label: t('kpi_quality'), value: qIssues === 0 ? 'OK' : qIssues + ' issue(s)', color: qIssues===0?'green':qIssues<=2?'amber':'red' });
+    kpis.push({ label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red' });
   }
   document.getElementById('kpiRow').innerHTML = kpis.map(k => `<div class="kpi-card"><div class="kpi-value ${k.color}"><span class="tl-dot ${k.color}"></span>${k.value}</div><div class="kpi-label">${k.label}</div></div>`).join('');
 
@@ -6762,6 +6865,8 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   // Details embed values read from the analysed page (author, canonical, og:image...) — always escape
   document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
   renderTitleCard(title, qualityResult, aiResult);
+  _summaryBase = buildSummaryItems(discoverChecks, contentChecks, qualityResult, aiResult, spellResult);
+  renderSummary(_summaryBase, false);
   document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
 
   const aiSection = document.getElementById('aiSection');
@@ -6845,6 +6950,65 @@ const FLUFF_COLOR_LABELS = {
   'evidence': { label: 'Unsupported / context-free', dot: '#3B82F6' },
   'repetition': { label: 'Repetition', dot: '#EC4899' }
 };
+
+// ========== SUMMARY ==========
+// Everything that is not green, gathered at the top so the editor sees first what to change
+const SUMMARY_ORDER = { discover: 1, title: 2, image: 3, structure: 4, quality: 5, spell: 6, editorial: 7, ai: 8 };
+let _summaryBase = [];
+
+function summaryFromChecks(sec, checks, tag) {
+  return checks.filter(c => c.status === 'fail' || c.status === 'warning')
+    .map(c => ({ level: c.status === 'fail' ? 'fix' : 'improve', sec, tag, text: c.label + ' — ' + c.detail }));
+}
+
+function buildSummaryItems(discoverChecks, contentChecks, q, ai, spellResult) {
+  const items = summaryFromChecks('discover', discoverChecks);
+  const a = q?.title_alignment, b = q?.title_balance, coh = ai?.lecture_editoriale?.titre_coherent;
+  if (a?.status && a.status !== 'aligned')
+    items.push({ level: a.status === 'misaligned' ? 'fix' : 'improve', sec: 'title', text: t('quality_title_align') + ' — ' + t(a.status === 'partial' ? 'quality_align_partial' : 'quality_align_misaligned') + (a.comment ? '. ' + a.comment : '') });
+  if (b?.status && b.status !== 'balanced')
+    items.push({ level: 'fix', sec: 'title', text: t('quality_balance') + ' — ' + t(b.status === 'clickbait' ? 'quality_balance_clickbait' : 'quality_balance_bland') + (b.suggestion ? '. ' + t('summary_title_suggestion', { title: b.suggestion }) : '') });
+  if (coh && coh.statut !== 'ok')
+    items.push({ level: coh.statut === 'fail' ? 'fix' : 'improve', sec: 'title', text: t('ai_title_coherent') + ' — ' + (coh.commentaire || '') });
+  items.push(...summaryFromChecks('structure', contentChecks));
+  if (q) {
+    const fluff = q.fluff || [];
+    const high = fluff.filter(f => f.severity === 'high').length, med = fluff.filter(f => f.severity === 'medium').length;
+    const repeated = q.article_identity?.repeated_facts?.length || 0;
+    if (high) items.push({ level: 'fix', sec: 'quality', text: t('summary_fluff_high', { n: high }) });
+    if (med) items.push({ level: 'improve', sec: 'quality', text: t('summary_fluff_medium', { n: med }) });
+    if (repeated) items.push({ level: 'improve', sec: 'quality', text: t('summary_repeated', { n: repeated }) });
+  }
+  if (spellResult?.errors?.length) items.push({ level: 'improve', sec: 'spell', text: t('summary_spell', { n: spellResult.errors.length }) });
+  const src = ai?.lecture_editoriale?.sourcing_present;
+  if (src && src.statut !== 'ok') items.push({ level: src.statut === 'fail' ? 'fix' : 'improve', sec: 'editorial', text: t('ai_sourcing') + ' — ' + (src.commentaire || '') });
+  // Free-text weaknesses from the AI Discover review, capped to keep the summary short
+  (ai?.discover?.points_faibles || []).slice(0, 3).forEach(p => items.push({ level: 'improve', sec: 'ai', text: p }));
+  return items;
+}
+
+function imageSummaryItems(rep) {
+  if (!rep) return [{ level: 'improve', sec: 'image', text: t('img_hero_none') }];
+  if (rep.loadError) return [{ level: 'improve', sec: 'image', text: t('img_load_error') }];
+  const hasAi = rep.ai && !rep.ai.error;
+  const tag = hasAi ? imageDiscoverScore(rep).score + '/100' : '';
+  return summaryFromChecks('image', imageChecks(rep).concat(hasAi ? imageAiChecks(rep.ai) : []), tag);
+}
+
+function renderSummary(items, imagePending) {
+  document.getElementById('summaryCard').style.display = 'block';
+  const sorted = items.slice().sort((x, y) => SUMMARY_ORDER[x.sec] - SUMMARY_ORDER[y.sec]);
+  const fix = sorted.filter(i => i.level === 'fix'), improve = sorted.filter(i => i.level === 'improve');
+  const list = arr => `<ul class="summary-list">${arr.map(i => `<li><span class="summary-section">${esc(t('summary_sec_' + i.sec) + (i.tag ? ' ' + i.tag : ''))}</span>${esc(i.text)}</li>`).join('')}</ul>`;
+  let html = '';
+  if (fix.length) html += `<div class="summary-group"><h4><span class="tl-dot red"></span> ${t('summary_fix')} (${fix.length})</h4>${list(fix)}</div>`;
+  if (improve.length) html += `<div class="summary-group"><h4><span class="tl-dot amber"></span> ${t('summary_improve')} (${improve.length})</h4>${list(improve)}</div>`;
+  if (!items.length && !imagePending) html = `<div class="summary-none"><span class="tl-dot green"></span> ${t('summary_none')}</div>`;
+  if (imagePending) html += `<div class="img-score-lost">${t('summary_image_pending')}</div>`;
+  document.getElementById('summaryBody').innerHTML = html;
+  const color = fix.length ? 'red' : improve.length ? 'amber' : 'green';
+  document.getElementById('summaryCount').innerHTML = `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${t('summary_count', { fix: fix.length, improve: improve.length })}`;
+}
 
 // Title analysis gathered in one card: the headline matters most for Discover, so it sits right under eligibility
 function renderTitleCard(title, q, ai) {
