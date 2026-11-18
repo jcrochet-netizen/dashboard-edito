@@ -6992,6 +6992,8 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   document.getElementById('discoverCount').innerHTML = `<span class="tl-dot ${discoverColor}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: discoverOk, n: discoverTotal })}`;
   // Details embed values read from the analysed page (author, canonical, og:image...) — always escape
   document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
+  // Opens collapsed at each analysis: its failing points are already listed in the summary
+  document.querySelector('#discoverCard .card-header').classList.add('collapsed');
   _summary = { base: buildSummaryItems(discoverChecks, contentChecks, qualityResult, aiResult, spellResult), title: [], image: [], pending: { title: false, image: false } };
   refreshSummary();
   document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
@@ -7806,9 +7808,16 @@ function generatePdf() {
       hidden.push(el);
     }
   }
+  // Collapsed cards (Discover eligibility opens collapsed) are expanded for the PDF, then closed again
+  const reopened = [...document.querySelectorAll('#results .card-header.collapsed')];
+  reopened.forEach(h => h.classList.remove('collapsed'));
+  const restore = () => {
+    hidden.forEach(el => el.style.display = '');
+    reopened.forEach(h => h.classList.add('collapsed'));
+  };
   // Build a container with only the results
   const resultsEl = document.getElementById('results');
-  if (!resultsEl) { hidden.forEach(el => el.style.display = ''); return; }
+  if (!resultsEl) { restore(); return; }
 
   // Load html2canvas + jsPDF dynamically
   const loadScript = (url) => new Promise((resolve, reject) => {
@@ -7868,12 +7877,12 @@ function generatePdf() {
       }
       pdf.save(fname + '.pdf');
     }).finally(() => {
-      hidden.forEach(el => el.style.display = '');
+      restore();
     });
   }).catch(err => {
     console.error('PDF generation failed:', err);
     alert('PDF generation failed. Check console for details.');
-    hidden.forEach(el => el.style.display = '');
+    restore();
   });
 }
 
