@@ -650,6 +650,11 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .ai-header h3 { font-size: 14px; font-weight: 600; }
+.ai-header { cursor: pointer; user-select: none; }
+.ai-header .chevron { color: var(--text-dim); font-size: 12px; transition: transform 0.2s; }
+.ai-header.collapsed .chevron { transform: rotate(-90deg); }
+.ai-header.collapsed { border-bottom: none; }
+.ai-header.collapsed + .ai-body { display: none; }
 .ai-header .ai-badge {
   font-size: 10px; font-weight: 700;
   background: linear-gradient(135deg, #6366F1, #8B5CF6);
@@ -1334,7 +1339,13 @@ body {
         <span class="chevron">▼</span>
       </div>
       <div class="card-body" id="contentBody"></div>
-      <div class="card-body" id="spellBody" style="display:none; border-top:1px solid var(--border)"></div>
+    </div>
+    <div class="card" id="spellCard" style="display:none">
+      <div class="card-header" onclick="toggleCard(this)">
+        <h3>✏️ <span data-t="spell_title">Spellcheck</span> <span class="count" id="spellCount"></span></h3>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body" id="spellBody"></div>
     </div>
     <div class="card" id="qualityCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
@@ -1345,10 +1356,11 @@ body {
       <div class="card-body" id="qualityBody"></div>
     </div>
     <div class="ai-section" id="aiSection" style="display:none">
-      <div class="ai-header">
+      <div class="ai-header" onclick="toggleCard(this)">
         <h3>🤖 <span data-t="ai_title">AI Analysis</span></h3>
         <span class="ai-badge">GPT-4o</span>
         <div class="export-btn-wrap" style="margin-left:auto"><button class="export-btn" onclick="event.stopPropagation();toggleExportMenu(this)">↓ <span data-t="export_btn">Export</span></button><div class="export-dropdown"><button onclick="exportSection('ai','csv')">CSV</button><button onclick="exportSection('ai','json')">JSON</button></div></div>
+        <span class="chevron">▼</span>
       </div>
       <div class="ai-body" id="aiBody"></div>
     </div>
@@ -3723,7 +3735,7 @@ async function startAnalysis(mode) {
   document.getElementById('evResults').style.display = 'none';
   document.getElementById('imgResults').style.display = 'none';
   document.getElementById('progressBar').classList.remove('active');
-  document.getElementById('spellBody').style.display = 'none';
+  document.getElementById('spellCard').style.display = 'none';
   document.getElementById('qualityCard').style.display = 'none';
   document.getElementById('discoverInsightsCard').style.display = 'none';
   document.getElementById('searchInsightsCard').style.display = 'none';
@@ -7231,8 +7243,10 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   document.getElementById('discoverCount').innerHTML = `<span class="tl-dot ${discoverColor}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: discoverOk, n: discoverTotal })}`;
   // Details embed values read from the analysed page (author, canonical, og:image...) — always escape
   document.getElementById('discoverBody').innerHTML = discoverChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
-  // Opens collapsed at each analysis: its failing points are already listed in the summary
+  // Open collapsed at each analysis: their failing points are already listed in the summary
   document.querySelector('#discoverCard .card-header').classList.add('collapsed');
+  document.querySelector('#contentCard .card-header').classList.add('collapsed');
+  document.querySelector('#aiSection .ai-header').classList.add('collapsed');
   _summary = { base: buildSummaryItems(discoverChecks, contentChecks, qualityResult, aiResult, spellResult), title: [], image: [], pending: { title: false, image: false } };
   refreshSummary();
   document.getElementById('contentBody').innerHTML = contentChecks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
@@ -7245,11 +7259,13 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
     document.getElementById('aiBody').innerHTML = `<div class="ai-unavailable">${t('ai_unavailable')}${errors.aiError ? ' <span class="ai-unavailable-detail">(' + esc(errors.aiError) + ')</span>' : ''}</div>`;
   }
 
+  const spellCard = document.getElementById('spellCard');
   const spellBody = document.getElementById('spellBody');
-  if (ticks.doSpell === false) { spellBody.style.display = 'none'; }
-  else if (spellResult) { spellBody.style.display = 'block'; renderSpellcheck(spellResult); }
+  document.getElementById('spellCount').innerHTML = '';
+  if (ticks.doSpell === false) { spellCard.style.display = 'none'; }
+  else if (spellResult) { spellCard.style.display = 'block'; renderSpellcheck(spellResult); }
   else {
-    spellBody.style.display = 'block';
+    spellCard.style.display = 'block';
     spellBody.innerHTML = `<div class="ai-unavailable">${t('ai_unavailable')}${errors.spellError ? ' <span class="ai-unavailable-detail">(' + esc(errors.spellError) + ')</span>' : ''}</div>`;
   }
 
@@ -7281,10 +7297,11 @@ function renderSpellcheck(spell) {
   const countLabel = errors.length === 0 ? t('spell_ok').split('.')[0] : t('spell_errors', {n: errors.length});
 
   const body = document.getElementById('spellBody');
-  let html = `<div class="check-row" style="font-weight:600;padding-bottom:4px"><div class="status-dot ${errors.length===0?'ok':'fail'}"></div><div class="check-label">✏️ ${t('spell_title')} <span class="spell-lang-badge" style="margin-left:6px">${esc(lang.toUpperCase())}</span></div><div class="check-detail"><span class="tl-dot ${countColor}" style="width:8px;height:8px"></span> ${countLabel}</div></div>`;
+  document.getElementById('spellCount').innerHTML = `<span class="tl-dot ${countColor}" style="width:8px;height:8px"></span> ${countLabel} <span class="spell-lang-badge" style="margin-left:4px">${esc(lang.toUpperCase())}</span>`;
+  let html = '';
 
   if (errors.length === 0) {
-    body.innerHTML = html;
+    body.innerHTML = `<div class="check-row"><div class="status-dot ok"></div><div class="check-detail">${t('spell_ok')}</div></div>`;
     return;
   }
 
@@ -8034,26 +8051,28 @@ function generatePdf() {
     pdfDiscover: 'discoverCard',
     pdfDiscoverInsights: 'discoverInsightsCard',
     pdfSearchInsights: 'searchInsightsCard',
-    pdfContent: 'contentCard',
+    pdfContent: ['contentCard', 'spellCard'],
     pdfQuality: 'qualityCard',
     pdfAi: 'aiSection',
     pdfAngles: 'anglesCard'
   };
   // Hide unchecked sections
   const hidden = [];
-  for (const [cbId, elId] of Object.entries(map)) {
-    const el = document.getElementById(elId);
-    if (!el) continue;
-    if (!document.getElementById(cbId).checked) {
+  for (const [cbId, elIds] of Object.entries(map)) {
+    if (document.getElementById(cbId).checked) continue;
+    for (const elId of [].concat(elIds)) {
+      const el = document.getElementById(elId);
+      if (!el) continue;
+      // Keep the previous value: a card already hidden (option unticked) must stay hidden afterwards
+      hidden.push([el, el.style.display]);
       el.style.display = 'none';
-      hidden.push(el);
     }
   }
   // Collapsed cards (Discover eligibility opens collapsed) are expanded for the PDF, then closed again
-  const reopened = [...document.querySelectorAll('#results .card-header.collapsed')];
+  const reopened = [...document.querySelectorAll('#results .card-header.collapsed, #results .ai-header.collapsed')];
   reopened.forEach(h => h.classList.remove('collapsed'));
   const restore = () => {
-    hidden.forEach(el => el.style.display = '');
+    hidden.forEach(([el, display]) => el.style.display = display);
     reopened.forEach(h => h.classList.add('collapsed'));
   };
   // Build a container with only the results
