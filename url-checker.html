@@ -1716,6 +1716,7 @@ const T = {
     chance_rec: "{n} article(s) on this topic on Discover in {days} days.",
     chance_rec_none: "No article on this topic on Discover in {days} days.",
     chance_rec_10d: "Including {n} in the last 10 days.",
+    chance_rec_target: "For this site, {n} are needed to be green.",
     chance_perf: "An article on this topic gets {x}× the clicks of the site's median article (90 days, {n} article(s)).",
     chance_perf_none: "No data: no article on this topic on Discover in 90 days.",
     chance_act_high: "Strong topic: publish fast and polish the title and image.",
@@ -2151,6 +2152,7 @@ const T = {
     chance_rec: "{n} article(s) sur ce sujet passé(s) sur Discover en {days} jours.",
     chance_rec_none: "Aucun article sur ce sujet passé sur Discover en {days} jours.",
     chance_rec_10d: "Dont {n} ces 10 derniers jours.",
+    chance_rec_target: "Pour ce site, il en faut {n} pour être au vert.",
     chance_perf: "Un article sur ce sujet fait {x}× les clics d'un article médian du site (90 jours, {n} article(s)).",
     chance_perf_none: "Pas de données : aucun article sur ce sujet sur Discover en 90 jours.",
     chance_act_high: "Sujet porteur : publiez vite et soignez le titre et l'image.",
@@ -2565,6 +2567,7 @@ const T = {
     chance_rec: "{n} artigo(s) sobre o tema no Discover em {days} dias.",
     chance_rec_none: "Nenhum artigo sobre o tema no Discover em {days} dias.",
     chance_rec_10d: "Sendo {n} nos últimos 10 dias.",
+    chance_rec_target: "Para este site, são necessários {n} para ficar no verde.",
     chance_perf: "Um artigo sobre o tema faz {x}× os cliques de um artigo mediano do site (90 dias, {n} artigo(s)).",
     chance_perf_none: "Sem dados: nenhum artigo sobre o tema no Discover em 90 dias.",
     chance_act_high: "Tema forte: publique rápido e caprive no título e na imagem.",
@@ -2997,6 +3000,7 @@ const T = {
     chance_rec: "{n} artículo(s) sobre el tema en Discover en {days} días.",
     chance_rec_none: "Ningún artículo sobre el tema en Discover en {days} días.",
     chance_rec_10d: "De ellos, {n} en los últimos 10 días.",
+    chance_rec_target: "Para este sitio, hacen falta {n} para estar en verde.",
     chance_perf: "Un artículo sobre el tema logra {x}× los clics de un artículo mediano del sitio (90 días, {n} artículo(s)).",
     chance_perf_none: "Sin datos: ningún artículo sobre el tema en Discover en 90 días.",
     chance_act_high: "Tema fuerte: publica rápido y cuida el título y la imagen.",
@@ -3509,6 +3513,17 @@ const SITE_LANG_MAP = {
   'BASKETUSA': 'fr', 'BASKETEUROPE': 'fr', 'LAKERSBRASIL': 'pt-BR',
 };
 
+// Sites whose headlines may tease the targeted player instead of naming him (network line).
+// Stadium guides and betting tips must name their subject (stadium, teams) in the title
+const SITE_TEASING = {
+  TOPMERCATO: true, SPORTSMOLE: true, FOOTBALLWHISPERS: true, TRIVELA: true, UMDOISESPORTES: true,
+  AFRIKFOOTFR: true, AFRIKFOOTZA: true, AFRIKFOOTNG: true, ALAIRELIBRE: true,
+  BASKETUSA: true, BASKETEUROPE: true, SOLOBASKET: true, LAKERSBRASIL: true,
+  FOOTBALLGROUNDGUIDE: false, MRFIXITSTIPS: false,
+};
+// No site selected: the network line applies
+function siteUsesTeasing(site) { return !site || SITE_TEASING[site] !== false; }
+
 const SITE_AUTHORITY = {
   'TOPMERCATO': { desc: 'French football news, transfers and analysis', topics: 'Ligue 1, transfer rumors, mercato, player signings, contract news, French football, Champions League, World Cup, player rankings, football history, tactical analysis' },
   'SPORTSMOLE': { desc: 'UK sports news, previews and predictions', topics: 'Premier League, Champions League, EFL, international football, match predictions, team news, rugby, tennis, F1, cricket, Olympics, World Cup, player stats, football records, transfer news' },
@@ -3762,14 +3777,14 @@ async function startAnalysis(mode) {
     const hero = doImage ? findHeroImage(doc, url) : null;
     const imagePromise = !doImage ? null : hero ? analyzeImage(hero).catch(() => ({ loadError: true, src: hero.url })) : Promise.resolve(null);
     // Title review (dedicated AI call) runs with the AI options and fills its card when ready
-    const titlePromise = (doContent || doQuality) ? runTitleAnalysis(title, bodyText).catch(e => ({ error: e.message || String(e) })) : null;
+    const titlePromise = (doContent || doQuality) ? runTitleAnalysis(title, bodyText, selectedSite).catch(e => ({ error: e.message || String(e) })) : null;
 
     // Run AI calls in parallel — angles starts as soon as content analysis resolves
     setProgress(62, t('prog_ai'));
 
     // Content analysis promise (angles depends on it)
     const contentPromise = doContent
-      ? runAIAnalysis(url, title, bodyText).catch(e => { aiError = e.message; console.warn('AI analysis failed:', e.message); return null; })
+      ? runAIAnalysis(url, title, bodyText, selectedSite).catch(e => { aiError = e.message; console.warn('AI analysis failed:', e.message); return null; })
       : Promise.resolve(null);
 
     // Angles chain: waits only for content analysis, not the other AI calls
@@ -5846,7 +5861,7 @@ function findSocialEmbeds(body) {
 }
 
 // ========== AI ANALYSIS ==========
-async function runAIAnalysis(url, title, bodyText) {
+async function runAIAnalysis(url, title, bodyText, site) {
   const words = bodyText.split(/\s+/);
   const truncated = words.slice(0, 6000).join(' ');
 
@@ -5867,9 +5882,7 @@ On te donne le titre, l'URL et le texte d'un article. Analyse-le selon deux axes
 
 3. ENTITÉS PRINCIPALES : 1 à 3 entités nommées PRÉCISES (noms propres). Jamais un mot générique.
 
-Le réseau pratique le teasing : ne pas nommer dans le titre le joueur ciblé par un club est un choix éditorial. Ne le signale jamais comme un point faible et ne propose aucun titre qui révèle ce nom.
-
-4. LECTURE ÉDITORIALE : 2 critères (statut "ok"/"warning"/"fail" + commentaire) :
+${siteUsesTeasing(site) ? 'Le réseau pratique le teasing : ne pas nommer dans le titre le joueur ciblé par un club est un choix éditorial. Ne le signale jamais comme un point faible et ne propose aucun titre qui révèle ce nom.\n\n' : ''}4. LECTURE ÉDITORIALE : 2 critères (statut "ok"/"warning"/"fail" + commentaire) :
    - titre_coherent : le titre ne promet pas plus que l'article livre
    - sourcing_present : au moins une source identifiable` + langInstruction;
 
@@ -6565,10 +6578,15 @@ function computeDiscoverChances(d) {
   const authority = fit === 'off'
     ? { status: n90 ? 'warning' : 'fail', text: t(n90 ? 'chance_auth_off_seen' : 'chance_auth_off', { n: n90 }) }
     : { status: n90 ? 'ok' : 'warning', text: t(n90 ? (fit === 'core' ? 'chance_auth_core' : 'chance_auth_adjacent') : 'chance_auth_unseen', { n: n90 }) };
-  // Recurrence: topic articles that reached Discover lately (30 days, else 90)
+  // Recurrence: topic articles that reached Discover lately (30 days, else 90). The bar follows the site's
+  // volume, about 1% of its Discover articles over the period (at least 2): small sites aren't held to big-site numbers
   const recent = n30 != null ? n30 : n90, days = n30 != null ? 30 : 90;
-  const recurrence = { status: recent >= 3 ? 'ok' : recent >= 1 ? 'warning' : 'fail',
-    text: t(recent ? 'chance_rec' : 'chance_rec_none', { n: recent, days }) + (n10 ? ' ' + t('chance_rec_10d', { n: n10 }) : '') };
+  const volume = (n30 != null ? d.match_30d.total : d.total_articles) || 0;
+  const target = Math.max(2, Math.ceil(volume * 0.01));
+  const recStatus = recent >= target ? 'ok' : recent >= 1 ? 'warning' : 'fail';
+  const recurrence = { status: recStatus,
+    text: t(recent ? 'chance_rec' : 'chance_rec_none', { n: recent, days }) + (n10 ? ' ' + t('chance_rec_10d', { n: n10 }) : '')
+      + (recStatus !== 'ok' ? ' ' + t('chance_rec_target', { n: target }) : '') };
   // Performance: median clicks of the topic against the site median (90 days; medians resist a single viral article)
   let performance;
   if (!n90 || !d.site_stats?.median_clicks) performance = { status: 'a_verifier', text: t('chance_perf_none') };
@@ -6579,8 +6597,10 @@ function computeDiscoverChances(d) {
   }
   const score = pts[authority.status] + pts[recurrence.status] + pts[performance.status];
   const level = score >= 5 ? 'high' : score >= 3 ? 'medium' : 'low';
+  // "Heavily covered lately" also scales with the site's 10-day volume (at least 3 articles)
+  const crowded = n10 >= Math.max(3, Math.ceil(((d.has_10d && d.match_10d.total) || 0) * 0.01));
   const action = level === 'low' ? (fit === 'off' ? 'chance_act_off' : 'chance_act_low')
-    : n10 >= 3 ? 'chance_act_crowded'
+    : crowded ? 'chance_act_crowded'
     : level === 'high' ? 'chance_act_high' : 'chance_act_medium';
   return {
     level,
@@ -7345,7 +7365,8 @@ function renderSummary(items, pending) {
 const TITLE_SEARCH_MAX = 70;   // Google Search shows about 60-65 characters of a title
 const TITLE_MAX = 100;
 
-async function runTitleAnalysis(title, bodyText) {
+async function runTitleAnalysis(title, bodyText, site) {
+  const teasingAllowed = siteUsesTeasing(site);
   const paragraphs = bodyText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
   const lead = paragraphs[0] || '';
   const excerpt = bodyText.split(/\s+/).slice(0, 1500).join(' ');
@@ -7357,9 +7378,9 @@ How Google treats headlines:
 - Discover: readers scroll, there is no query. A headline earns the tap with a precise, concrete promise: named people or clubs, a striking figure (fee, age, stat, date, ranking), a vivid or emotional word (blow, relief, anger, record, surprise...), a clear stake. Google's Discover guidelines ban clickbait: no exaggeration, no promise the article does not keep, no all caps or sensational punctuation.
 - Figures and emotion are a plus, never mandatory: do not force them when the article has none.
 
-Teasing is this network's editorial line: headlines often withhold the name of the player a club is targeting ("une autre cible en défense", "un crack de Premier League", "ce milieu"). When the original headline does that:
+${teasingAllowed ? `Teasing is this network's editorial line: headlines often withhold the name of the player a club is targeting ("une autre cible en défense", "un crack de Premier League", "ce milieu"). When the original headline does that:
 - it is a deliberate choice, not a flaw: set teasing to true, never list the teased name as missing, and never call the headline imprecise, bland or clickbait because of it;
-- judge the main keyword on what the headline does name (club, competition, position, transfer window), not on the teased player.
+- judge the main keyword on what the headline does name (club, competition, position, transfer window), not on the teased player.` : `This site does not use teasing: its headlines must name their main subject (team, player, stadium, match). A headline that withholds it is a flaw: set teasing to false and list the withheld names as missing.`}
 
 Your review:
 - keywords: the query a reader would type to find this article, where it sits in the headline, and important names from the article that are missing from it.
@@ -7417,7 +7438,7 @@ Answer only through the title_report tool. Write every comment in ${langName}.`;
   });
   const tc = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!tc) throw new Error(t('err_no_tool'));
-  return JSON.parse(tc.function.arguments);
+  return { ...JSON.parse(tc.function.arguments), teasingAllowed };
 }
 
 // Rows of the title card. "bonus" rows (figure, emotion) are never a fault: green when present, grey otherwise
@@ -7426,9 +7447,10 @@ function titleChecks(title, rep) {
   const rows = [{ label: t('title_len_label'), status: len <= TITLE_SEARCH_MAX ? 'ok' : len <= TITLE_MAX ? 'warning' : 'fail', value: t('title_chars', { n: len }), why: len <= TITLE_SEARCH_MAX ? '' : t(len <= TITLE_MAX ? 'title_len_long' : 'title_len_too_long') }];
   if (!rep || rep === 'pending' || rep.error) return rows;
   // Teasing (withholding the targeted player's name) is the network's editorial choice, never a fault
-  const k = rep.keywords || {}, missing = rep.teasing ? [] : (k.missing_entities || []);
+  const teasing = rep.teasing && rep.teasingAllowed !== false;
+  const k = rep.keywords || {}, missing = teasing ? [] : (k.missing_entities || []);
   rows.push({ label: t('title_kw_label'), status: k.position === 'absent' ? 'fail' : (k.position === 'end' || missing.length) ? 'warning' : 'ok',
-    value: (k.main_keyword ? '"' + k.main_keyword + '" ' : '') + t('title_kw_' + (k.position || 'absent')) + (rep.teasing ? ' · ' + t('title_teasing') : ''),
+    value: (k.main_keyword ? '"' + k.main_keyword + '" ' : '') + t('title_kw_' + (k.position || 'absent')) + (teasing ? ' · ' + t('title_teasing') : ''),
     why: [missing.length ? t('title_kw_missing', { list: missing.join(', ') }) : '', k.comment].filter(Boolean).join(' ') });
   const n = rep.numbers || {};
   rows.push({ label: t('title_num_label'), bonus: true, status: n.in_title ? 'ok' : 'a_verifier', value: t(n.in_title ? 'title_num_yes' : 'title_num_no'),
