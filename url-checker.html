@@ -6212,13 +6212,27 @@ Respond ONLY via the spellcheck_report tool.`;
 }
 
 // ========== CONTENT QUALITY CHECK (AI) ==========
+// bodyText holds one paragraph per line (extractBodyText joins p/li/h2... with "\n"): splitting on blank lines
+// gave a single "paragraph", so the whole article was sent as the lead AND as the body and every fact looked
+// repeated. The lead is the first real paragraph; byline and date lines before it are short
+function splitLeadAndBody(bodyText) {
+  const lines = bodyText.split('\n').map(l => l.trim()).filter(l => /\p{L}/u.test(l));
+  const i = lines.findIndex(l => l.length >= 80);
+  return i < 0 ? { lead: lines[0] || '', body: lines.slice(1) } : { lead: lines[i], body: lines.slice(i + 1) };
+}
+
 async function runQualityCheck(title, bodyText, articleUrl, site) {
   const topicLang = siteLanguageName(site) || 'the language of the article';
-  const words = bodyText.split(/\s+/);
-  const excerpt = words.slice(0, 4000).join(' ');
-  // Extract first paragraph as chapô (lead)
-  const paragraphs = bodyText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
-  const chapo = paragraphs[0] || '';
+  const { lead: chapo, body } = splitLeadAndBody(bodyText);
+  // Paragraphs after the lead, numbered so the model gives reliable §-positions (up to ~4,000 words)
+  const numbered = [];
+  let wordCount = 0;
+  for (const [i, para] of body.entries()) {
+    wordCount += para.split(/\s+/).length;
+    if (wordCount > 4000) break;
+    numbered.push(`[§${i + 1}] ${para}`);
+  }
+  const excerpt = numbered.join('\n\n');
 
   // Fetch feedback for continuous learning
   let calibration = '';
@@ -6297,7 +6311,7 @@ Apply these tests. A sentence must fail at least 2 tests AND be the kind of cont
 - EVIDENCE-FREE TEST: Does it make a judgment without giving any evidence?
 
 For each padding instance: the exact quote, a category (delete-test, any-team, context-free, repetition, evidence-free), the severity (high/medium), which tests it fails, and a suggested rewrite in the same language. If the sentence should just be deleted, say "delete".` + calibration },
-        { role: 'user', content: `TITLE: ${title}\n\nCHAPÔ (lead paragraph):\n${chapo}\n\nFULL ARTICLE:\n${excerpt}` }
+        { role: 'user', content: `TITLE: ${title}\n\nCHAPÔ (lead paragraph, exempt from the repetition and fluff checks):\n${chapo}\n\nARTICLE BODY (the paragraphs after the chapô, numbered: use these § numbers for positions):\n${excerpt}` }
       ],
       tools: [{
         type: 'function',
@@ -6314,7 +6328,7 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
                   topic: { type: 'string', description: `The real topic derived from the title, written in ${topicLang}. E.g. "attendance figures roundup", "transfer news", "match preview Man Utd vs Tottenham" (translated)` },
                   type: { type: 'string', enum: ['match-report','preview','transfer-news','rankings-list','roundup-compilation','analysis','interview','player-profile','opinion','news','other'], description: 'Article type category' },
                   key_facts: { type: 'array', items: { type: 'string' }, description: 'The 3-5 most important specific facts (numbers, scores, stats) used to check for cross-paragraph repetition' },
-                  repeated_facts: { type: 'array', items: { type: 'object', properties: { fact: { type: 'string', description: 'The specific fact/number that is repeated with NO new information added' }, locations: { type: 'integer', description: 'Number of separate locations where this fact appears with no added value (excluding chapô)' }, positions: { type: 'array', items: { type: 'string' }, description: 'Specific paragraph numbers where each redundant occurrence appears, e.g. ["§3", "§7"]. Count from 1 after chapô. One entry per occurrence.' } }, required: ['fact', 'locations', 'positions'] }, description: 'Facts restated in 2+ paragraphs with NO new context or details added (pure redundancy). Do NOT include facts that reappear with added analysis, quotes, or new information — that is normal writing. Empty array if no true redundancy found.' }
+                  repeated_facts: { type: 'array', items: { type: 'object', properties: { fact: { type: 'string', description: `The specific fact/number that is repeated with NO new information added, written in ${topicLang}` }, locations: { type: 'integer', description: 'Number of separate locations where this fact appears with no added value (excluding chapô)' }, positions: { type: 'array', items: { type: 'string' }, description: 'Specific paragraph numbers where each redundant occurrence appears, e.g. ["§3", "§7"]. Count from 1 after chapô. One entry per occurrence.' } }, required: ['fact', 'locations', 'positions'] }, description: 'Facts restated in 2+ paragraphs with NO new context or details added (pure redundancy). Do NOT include facts that reappear with added analysis, quotes, or new information — that is normal writing. Empty array if no true redundancy found.' }
                 }, required: ['topic', 'type', 'key_facts', 'repeated_facts']
               },
               fluff: {
@@ -7551,8 +7565,7 @@ const TITLE_MAX = 100;
 
 async function runTitleAnalysis(title, bodyText, site) {
   const teasingAllowed = siteUsesTeasing(site);
-  const paragraphs = bodyText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
-  const lead = paragraphs[0] || '';
+  const { lead } = splitLeadAndBody(bodyText);
   const excerpt = bodyText.split(/\s+/).slice(0, 1500).join(' ');
   const langName = LANG === 'fr' ? 'French' : LANG === 'pt-br' ? 'Brazilian Portuguese' : LANG === 'es' ? 'Spanish' : 'English';
   const system = `You are the head of SEO and audience for a network of sports news sites. You review an article's headline for Google Discover and Google Search.
