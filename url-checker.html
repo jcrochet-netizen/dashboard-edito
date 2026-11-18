@@ -1326,7 +1326,7 @@ body {
     </div>
     <div class="card" id="searchInsightsCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
-        <h3>🔍 <span data-t="search_insights_title">AI Search Insights</span></h3>
+        <h3>🔎 <span data-t="search_insights_title">Search potential</span></h3>
         <div class="export-btn-wrap"><button class="export-btn" onclick="event.stopPropagation();toggleExportMenu(this)">↓ <span data-t="export_btn">Export</span></button><div class="export-dropdown"><button onclick="exportSection('searchInsights','csv')">CSV</button><button onclick="exportSection('searchInsights','json')">JSON</button></div></div>
         <span class="chevron">▼</span>
       </div>
@@ -1769,10 +1769,33 @@ const T = {
     authority_para_on_10d: "{count} article(s) about {topic} were on Discover in the last 10 days (out of {total} in the dataset).",
     authority_para_off_10d: "No articles about {topic} were found on Discover in the last 10 days. The dataset has {total} article(s) on Discover overall.",
     discover_cap_note: "The dataset is capped at ~1,000 rows. Older articles in the 30-day file may have been pushed out, which is why the 30-day count can be lower than the 10-day count.",
-    search_insights_title: "AI Search Insights",
+    search_insights_title: "Search potential",
     authority_on_search: "On Search",
     authority_not_on_search: "Not on Search",
     authority_search_10d: "Last 10 days",
+    search_title: "Search potential",
+    search_high: "High",
+    search_medium: "Medium",
+    search_low: "Low",
+    search_sig_pos: "Position",
+    search_auth: "{n} page(s) of the site on this topic in Google, {p} on the first page (10 days).",
+    search_auth_none: "No page of the site on this topic in Google over the last 10 days.",
+    search_auth_off: "Topic outside the site's themes: {n} page(s) in Google over 10 days.",
+    search_pos: "Median position {pos} ({page}), against {site} for the site.",
+    search_pos_none: "No data: no page of the site on this topic in Google over 10 days.",
+    search_page1: "first page",
+    search_page2: "second page",
+    search_page3: "beyond page 2",
+    search_perf: "A page on this topic gets {x}× the impressions of the site's median page (10 days, {n} page(s)).",
+    search_perf_none: "No data: no page of the site on this topic in Google over 10 days.",
+    search_act_high: "The site ranks well on this topic: put the query “{kw}” at the start of the title and link your best-ranked page.",
+    search_act_medium: "Fair potential: work the query “{kw}” into the title, the lead and a subheading.",
+    search_act_low: "Few Search signals on this topic: aim for a precise long-tail query, or rely on Discover.",
+    search_act_off: "Topic outside the site's themes: little chance to rank, rely on Discover or an angle closer to the site.",
+    search_act_cannibal: "A page of the site already ranks at position {pos} on this topic: update it or link to it rather than compete with it.",
+    search_ref: "Best-ranked page on this topic:",
+    search_ref_cannibal: "Page already well ranked:",
+    search_ref_stats: "position {pos} · {n} clicks in 10 days",
     authority_search_para_on: "{count} article(s) about {topic} appeared in Google Search in the last 10 days (out of {total} in the dataset).",
     authority_search_para_off: "No articles about {topic} were found in Google Search in the last 10 days. The dataset has {total} article(s) in Search overall.",
     // Export
@@ -1784,7 +1807,7 @@ const T = {
     pdf_sec_kpi: "KPI Summary",
     pdf_sec_discover: "Discover Eligibility",
     pdf_sec_discover_insights: "Discover chances",
-    pdf_sec_search_insights: "AI Search Insights",
+    pdf_sec_search_insights: "Search potential",
     pdf_sec_content: "Article Structure & Spellcheck",
     pdf_sec_quality: "Content Quality",
     pdf_sec_ai: "AI Analysis",
@@ -2206,10 +2229,33 @@ const T = {
     authority_para_on_10d: "{count} article(s) sur {topic} étaient sur Discover au cours des 10 derniers jours (sur {total} dans le jeu de données).",
     authority_para_off_10d: "Aucun article sur {topic} n'a été trouvé sur Discover au cours des 10 derniers jours. Le jeu de données contient {total} article(s) sur Discover au total.",
     discover_cap_note: "Le fichier est limité à ~1 000 lignes. Les articles plus anciens du fichier 30 jours peuvent avoir été supprimés, ce qui explique pourquoi le total 30 jours peut être inférieur à celui de 10 jours.",
-    search_insights_title: "Insights IA Search",
+    search_insights_title: "Potentiel Search",
     authority_on_search: "Sur Search",
     authority_not_on_search: "Pas sur Search",
     authority_search_10d: "10 derniers jours",
+    search_title: "Potentiel Search",
+    search_high: "Élevé",
+    search_medium: "Moyen",
+    search_low: "Faible",
+    search_sig_pos: "Position",
+    search_auth: "{n} page(s) du site sur ce sujet dans Google, dont {p} en première page (10 jours).",
+    search_auth_none: "Aucune page du site sur ce sujet dans Google ces 10 derniers jours.",
+    search_auth_off: "Sujet hors des thèmes du site : {n} page(s) dans Google en 10 jours.",
+    search_pos: "Position médiane {pos} ({page}), contre {site} pour le site.",
+    search_pos_none: "Pas de données : aucune page du site sur ce sujet dans Google en 10 jours.",
+    search_page1: "première page",
+    search_page2: "deuxième page",
+    search_page3: "au-delà de la 2e page",
+    search_perf: "Une page sur ce sujet fait {x}× les impressions d'une page médiane du site (10 jours, {n} page(s)).",
+    search_perf_none: "Pas de données : aucune page du site sur ce sujet dans Google en 10 jours.",
+    search_act_high: "Le site est bien placé sur ce sujet : mettez la requête « {kw} » en tête du titre et faites un lien vers votre page la mieux classée.",
+    search_act_medium: "Potentiel correct : travaillez la requête « {kw} » dans le titre, le chapô et un intertitre.",
+    search_act_low: "Peu de signaux Search sur ce sujet : visez une requête de longue traîne précise, ou misez sur Discover.",
+    search_act_off: "Sujet hors des thèmes du site : peu de chances de bien se classer, misez sur Discover ou un angle plus proche du site.",
+    search_act_cannibal: "Une page du site est déjà en position {pos} sur ce sujet : mettez-la à jour ou faites un lien vers elle plutôt que de la concurrencer.",
+    search_ref: "Page la mieux classée sur ce sujet :",
+    search_ref_cannibal: "Page déjà bien classée :",
+    search_ref_stats: "position {pos} · {n} clics en 10 jours",
     authority_search_para_on: "{count} article(s) sur {topic} sont apparus dans Google Search au cours des 10 derniers jours (sur {total} dans le jeu de données).",
     authority_search_para_off: "Aucun article sur {topic} n'a ete trouve dans Google Search au cours des 10 derniers jours. Le jeu de données contient {total} article(s) dans Search au total.",
     export_btn: "Exporter",
@@ -2220,7 +2266,7 @@ const T = {
     pdf_sec_kpi: "Resume KPI",
     pdf_sec_discover: "Eligibilite Discover",
     pdf_sec_discover_insights: "Chances Discover",
-    pdf_sec_search_insights: "Insights IA Search",
+    pdf_sec_search_insights: "Potentiel Search",
     pdf_sec_content: "Structure & orthographe",
     pdf_sec_quality: "Qualite du contenu",
     pdf_sec_ai: "Analyse IA",
@@ -2622,10 +2668,33 @@ const T = {
     authority_para_on_10d: "{count} artigo(s) sobre {topic} estiveram no Discover nos últimos 10 dias (de {total} no conjunto de dados).",
     authority_para_off_10d: "Nenhum artigo sobre {topic} foi encontrado no Discover nos últimos 10 dias. O conjunto de dados tem {total} artigo(s) no Discover no total.",
     discover_cap_note: "O arquivo é limitado a ~1.000 linhas. Artigos mais antigos no arquivo de 30 dias podem ter sido removidos, por isso a contagem de 30 dias pode ser menor que a de 10 dias.",
-    search_insights_title: "Insights IA Search",
+    search_insights_title: "Potencial no Search",
     authority_on_search: "No Search",
     authority_not_on_search: "Fora do Search",
     authority_search_10d: "Ultimos 10 dias",
+    search_title: "Potencial no Search",
+    search_high: "Alto",
+    search_medium: "Médio",
+    search_low: "Baixo",
+    search_sig_pos: "Posição",
+    search_auth: "{n} página(s) do site sobre o tema no Google, {p} na primeira página (10 dias).",
+    search_auth_none: "Nenhuma página do site sobre o tema no Google nos últimos 10 dias.",
+    search_auth_off: "Tema fora dos temas do site: {n} página(s) no Google em 10 dias.",
+    search_pos: "Posição mediana {pos} ({page}), contra {site} do site.",
+    search_pos_none: "Sem dados: nenhuma página do site sobre o tema no Google em 10 dias.",
+    search_page1: "primeira página",
+    search_page2: "segunda página",
+    search_page3: "além da 2ª página",
+    search_perf: "Uma página sobre o tema faz {x}× as impressões de uma página mediana do site (10 dias, {n} página(s)).",
+    search_perf_none: "Sem dados: nenhuma página do site sobre o tema no Google em 10 dias.",
+    search_act_high: "O site está bem posicionado no tema: coloque a busca “{kw}” no início do título e linke sua página mais bem posicionada.",
+    search_act_medium: "Potencial razoável: trabalhe a busca “{kw}” no título, no lead e num intertítulo.",
+    search_act_low: "Poucos sinais de Search sobre o tema: mire numa busca de cauda longa precisa, ou aposte no Discover.",
+    search_act_off: "Tema fora dos temas do site: pouca chance de ranquear, aposte no Discover ou num ângulo mais próximo do site.",
+    search_act_cannibal: "Uma página do site já está na posição {pos} sobre o tema: atualize-a ou linke-a em vez de concorrer com ela.",
+    search_ref: "Página mais bem posicionada sobre o tema:",
+    search_ref_cannibal: "Página já bem posicionada:",
+    search_ref_stats: "posição {pos} · {n} cliques em 10 dias",
     authority_search_para_on: "{count} artigo(s) sobre {topic} apareceram no Google Search nos ultimos 10 dias (de {total} no conjunto de dados).",
     authority_search_para_off: "Nenhum artigo sobre {topic} foi encontrado no Google Search nos ultimos 10 dias. O conjunto de dados tem {total} artigo(s) no Search no total.",
     export_btn: "Exportar",
@@ -2636,7 +2705,7 @@ const T = {
     pdf_sec_kpi: "Resumo KPI",
     pdf_sec_discover: "Eligibilidade Discover",
     pdf_sec_discover_insights: "Chances no Discover",
-    pdf_sec_search_insights: "Insights IA Search",
+    pdf_sec_search_insights: "Potencial no Search",
     pdf_sec_content: "Estrutura & ortografia",
     pdf_sec_quality: "Qualidade do conteudo",
     pdf_sec_ai: "Analise IA",
@@ -3056,10 +3125,33 @@ const T = {
     authority_para_on_10d: "{count} artículo(s) sobre {topic} estuvieron en Discover en los últimos 10 días (de {total} en el conjunto de datos).",
     authority_para_off_10d: "No se encontraron artículos sobre {topic} en Discover en los últimos 10 días. El conjunto de datos tiene {total} artículo(s) en Discover en total.",
     discover_cap_note: "El archivo está limitado a ~1.000 filas. Los artículos más antiguos del archivo de 30 días pueden haber sido eliminados, por eso el total de 30 días puede ser menor que el de 10 días.",
-    search_insights_title: "Insights IA Search",
+    search_insights_title: "Potencial en Search",
     authority_on_search: "En Search",
     authority_not_on_search: "No en Search",
     authority_search_10d: "Ultimos 10 dias",
+    search_title: "Potencial en Search",
+    search_high: "Alto",
+    search_medium: "Medio",
+    search_low: "Bajo",
+    search_sig_pos: "Posición",
+    search_auth: "{n} página(s) del sitio sobre el tema en Google, {p} en la primera página (10 días).",
+    search_auth_none: "Ninguna página del sitio sobre el tema en Google en los últimos 10 días.",
+    search_auth_off: "Tema fuera de los temas del sitio: {n} página(s) en Google en 10 días.",
+    search_pos: "Posición mediana {pos} ({page}), frente a {site} del sitio.",
+    search_pos_none: "Sin datos: ninguna página del sitio sobre el tema en Google en 10 días.",
+    search_page1: "primera página",
+    search_page2: "segunda página",
+    search_page3: "más allá de la 2.ª página",
+    search_perf: "Una página sobre el tema logra {x}× las impresiones de una página mediana del sitio (10 días, {n} página(s)).",
+    search_perf_none: "Sin datos: ninguna página del sitio sobre el tema en Google en 10 días.",
+    search_act_high: "El sitio está bien posicionado en el tema: pon la búsqueda «{kw}» al inicio del título y enlaza tu página mejor posicionada.",
+    search_act_medium: "Potencial correcto: trabaja la búsqueda «{kw}» en el título, la entradilla y un subtítulo.",
+    search_act_low: "Pocas señales de Search sobre el tema: apunta a una búsqueda de cola larga precisa, o apuesta por Discover.",
+    search_act_off: "Tema fuera de los temas del sitio: pocas posibilidades de posicionar, apuesta por Discover o un ángulo más cercano al sitio.",
+    search_act_cannibal: "Una página del sitio ya está en la posición {pos} sobre el tema: actualízala o enlázala en lugar de competir con ella.",
+    search_ref: "Página mejor posicionada sobre el tema:",
+    search_ref_cannibal: "Página ya bien posicionada:",
+    search_ref_stats: "posición {pos} · {n} clics en 10 días",
     authority_search_para_on: "{count} articulo(s) sobre {topic} aparecieron en Google Search en los ultimos 10 dias (de {total} en el conjunto de datos).",
     authority_search_para_off: "No se encontraron articulos sobre {topic} en Google Search en los ultimos 10 dias. El conjunto de datos tiene {total} articulo(s) en Search en total.",
     export_btn: "Exportar",
@@ -3070,7 +3162,7 @@ const T = {
     pdf_sec_kpi: "Resumen KPI",
     pdf_sec_discover: "Eligibilidad Discover",
     pdf_sec_discover_insights: "Posibilidades en Discover",
-    pdf_sec_search_insights: "Insights IA Search",
+    pdf_sec_search_insights: "Potencial en Search",
     pdf_sec_content: "Estructura & ortografia",
     pdf_sec_quality: "Calidad del contenido",
     pdf_sec_ai: "Analisis IA",
@@ -6479,7 +6571,8 @@ URL list format: [index] path | clicks | impressions` },
     topic: gpt.topic,
     site_fit: gpt.site_fit || 'core',
     rows: (gpt.matching_indices || []).filter(i => i >= 0 && i < subset.length).map(i => subset[i]),
-    keywords
+    keywords,
+    entityKeywords: [...entityKw]
   };
 }
 
@@ -6621,6 +6714,8 @@ function renderTopArticles(articles) {
   return html;
 }
 
+function fmtDecimal(v) { return LANG === 'en' ? v.toFixed(1) : v.toFixed(1).replace('.', ','); }
+
 // Editor-facing verdict from three plain signals. A level, not a percentage: a probability could not be calibrated.
 // Sheets: main = last 90 days, plus 30-day and 10-day exports
 function computeDiscoverChances(d) {
@@ -6647,7 +6742,7 @@ function computeDiscoverChances(d) {
   if (!n90 || !d.site_stats?.median_clicks) performance = { status: 'a_verifier', text: t('chance_perf_none') };
   else {
     const ratio = d.topic_median_clicks / d.site_stats.median_clicks;
-    const x = LANG === 'en' ? ratio.toFixed(1) : ratio.toFixed(1).replace('.', ',');
+    const x = fmtDecimal(ratio);
     performance = { status: ratio >= 1.5 ? 'ok' : ratio >= 0.7 ? 'warning' : 'fail', text: t('chance_perf', { x, n: n90 }) };
   }
   const score = pts[authority.status] + pts[recurrence.status] + pts[performance.status];
@@ -6789,6 +6884,7 @@ async function runSearchAuthority(url, title, overrideTab) {
     const count = matchingRows.length;
 
     const topArticlesSearch = count > 0 ? [...matchingRows].sort((a, b) => b.clicks - a.clicks).slice(0, 3) : [];
+    const positioned = matchingRows.filter(r => r.position != null);
     const result = {
       topic: gpt.topic,
       matching_count: count,
@@ -6800,10 +6896,65 @@ async function runSearchAuthority(url, title, overrideTab) {
       site: tab,
       site_stats: siteStats,
       authority_level: count > 0 ? 'on_search' : 'not_on_search',
-      site_fit: gpt.site_fit
+      site_fit: gpt.site_fit,
+      topic_median_impressions: count > 0 ? computeMedian(matchingRows.map(r => r.impressions)) : 0,
+      topic_median_position: positioned.length ? computeMedian(positioned.map(r => r.position)) : null,
+      topic_page1: positioned.filter(r => r.position <= 10).length,
+      // Best-ranked topic page with real visibility (a page at position 1 with 2 impressions says nothing)
+      best_ranked: [...positioned].filter(r => r.impressions >= (siteStats.median_impressions || 0)).sort((a, b) => a.position - b.position)[0]
+        || [...positioned].sort((a, b) => a.position - b.position)[0] || null,
+      // Same-query risk, not just same broad topic ("mercato Barça" covers many players): a top page whose URL
+      // shares at least two of the title's keywords, one of them a proper noun (Deco, Tah...)
+      cannibal: [...positioned].filter(r => r.position <= SEARCH_CANNIBAL_POS).sort((a, b) => a.position - b.position).find(r => {
+        const shared = match.keywords.filter(kw => r.url.toLowerCase().includes(kw));
+        return shared.length >= 2 && shared.some(kw => match.entityKeywords.includes(kw));
+      }) || null
     };
     return result;
   } catch(e) { return null; }
+}
+
+// Search potential, same logic as the Discover chances. The Search sheet holds each site's 1,000 most clicked
+// pages over 10 days (the cap is reached on 14 sites out of 15), so: fixed page-count bar, and impressions
+// rather than clicks (half the pages of small sites have 0 click, their median is 0)
+const SEARCH_AUTH_MIN = 5;      // topic pages among the site's top pages for a green authority
+const SEARCH_CANNIBAL_POS = 3;  // a topic page already this high: update or link it rather than compete
+
+function computeSearchPotential(d) {
+  const pts = { ok: 2, warning: 1, fail: 0, a_verifier: 0 };
+  const n = d.matching_count, fit = d.site_fit || 'core';
+  const authority = fit === 'off'
+    ? { status: n ? 'warning' : 'fail', text: t('search_auth_off', { n }) }
+    : { status: n >= SEARCH_AUTH_MIN ? 'ok' : n >= 1 ? 'warning' : 'fail', text: n ? t('search_auth', { n, p: d.topic_page1 }) : t('search_auth_none') };
+  let position;
+  if (d.topic_median_position == null) position = { status: 'a_verifier', text: t('search_pos_none') };
+  else {
+    const pos = d.topic_median_position;
+    const status = pos <= 10 ? 'ok' : pos <= 20 ? 'warning' : 'fail';
+    position = { status, text: t('search_pos', { pos: fmtDecimal(pos), page: t({ ok: 'search_page1', warning: 'search_page2', fail: 'search_page3' }[status]), site: d.site_stats?.median_position != null ? fmtDecimal(d.site_stats.median_position) : '—' }) };
+  }
+  let performance;
+  if (!n || !d.site_stats?.median_impressions) performance = { status: 'a_verifier', text: t('search_perf_none') };
+  else {
+    const ratio = d.topic_median_impressions / d.site_stats.median_impressions;
+    // Small sites have a tiny median (10 impressions): beyond 10× the exact figure means little
+    performance = { status: ratio >= 1.5 ? 'ok' : ratio >= 0.7 ? 'warning' : 'fail', text: t('search_perf', { x: ratio >= 10 ? '>10' : fmtDecimal(ratio), n }) };
+  }
+  const score = pts[authority.status] + pts[position.status] + pts[performance.status];
+  const level = score >= 5 ? 'high' : score >= 3 ? 'medium' : 'low';
+  const cannibal = d.cannibal || null;
+  const action = cannibal ? 'search_act_cannibal'
+    : level === 'low' ? (fit === 'off' ? 'search_act_off' : 'search_act_low')
+    : level === 'high' ? 'search_act_high' : 'search_act_medium';
+  return {
+    level, cannibal,
+    signals: [
+      { label: t('chance_sig_auth'), ...authority },
+      { label: t('search_sig_pos'), ...position },
+      { label: t('chance_sig_perf'), ...performance }
+    ],
+    action: t(action, { kw: d.topic || '', pos: cannibal ? fmtDecimal(cannibal.position) : '' })
+  };
 }
 
 function renderSearchInsights(d) {
@@ -6812,11 +6963,25 @@ function renderSearchInsights(d) {
   if (!d) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
+  const c = computeSearchPotential(d);
+  const color = { high: 'green', medium: 'amber', low: 'red' }[c.level];
+  let html = `<div class="chance-verdict"><span class="tl-dot ${color}"></span><strong>${t('search_title')} : ${t('search_' + c.level)}</strong></div>`;
+  html += `<div class="chance-sub">${esc(d.topic || '')} · ${esc(d.site)}</div>`;
+  html += c.signals.map(sg => `<div class="check-row"><div class="status-dot ${sg.status}"></div><div class="check-label">${esc(sg.label)}</div><div class="check-detail">${esc(sg.text)}</div></div>`).join('');
+  html += `<div class="chance-action">→ ${esc(c.action)}`;
+  const ref = c.cannibal || d.best_ranked;
+  if (ref) {
+    html += `<div class="chance-ref">${t(c.cannibal ? 'search_ref_cannibal' : 'search_ref')} <a href="${safeUrl(ref.url)}" target="_blank" rel="noopener">${esc(articleLabelFromUrl(ref.url))}</a> · ${esc(t('search_ref_stats', { pos: fmtDecimal(ref.position), n: Math.round(ref.clicks).toLocaleString() }))}</div>`;
+  }
+  html += `</div>`;
+
+  // The former figures and tables stay available for those who want to dig
+  let details = '';
   const isOn = d.matching_count > 0;
   const levelColor = isOn ? 'green' : 'red';
   const levelLabel = isOn ? t('authority_on_search') : t('authority_not_on_search');
 
-  let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+  details += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <span class="tl-dot ${levelColor}"></span>
     <strong>${levelLabel}</strong>
     <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${d.site} · ${t('authority_search_10d')}</span>
@@ -6824,14 +6989,15 @@ function renderSearchInsights(d) {
 
   if (isOn && d.site_stats) {
     const para = t('authority_search_para_on', { topic: d.topic, count: d.matching_count, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para)}</p>`;
-    html += buildComparisonTable(d, d.site_stats, 'Topic');
-    html += renderTopArticles(d.top_articles);
+    details += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para)}</p>`;
+    details += buildComparisonTable(d, d.site_stats, 'Topic');
+    details += renderTopArticles(d.top_articles);
   } else {
     const para = t('authority_search_para_off', { topic: d.topic, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para)}</p>`;
+    details += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para)}</p>`;
   }
 
+  html += `<details class="chance-details"><summary>${t('chance_details')}</summary><div class="chance-details-body">${details}</div></details>`;
   body.innerHTML = html;
 }
 
