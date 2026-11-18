@@ -557,11 +557,9 @@ body {
 .card-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 16px; margin-bottom: 16px; }
 .card-pair > .card { margin-bottom: 0; }
 .card-pair .check-label { min-width: 120px; }
-/* Smaller photo so the image card fits half the width */
-.card-pair .img-report { grid-template-columns: 140px minmax(0, 1fr); gap: 14px; }
+/* The article analysis shows no photo in the image card, only the checks */
+.img-report.no-preview { grid-template-columns: 1fr; }
 @media (max-width: 640px) {
-  .card-pair .img-report { grid-template-columns: 1fr; }
-  .card-pair .img-preview { max-width: 240px; }
   .card-pair .check-label { min-width: auto; }
 }
 
@@ -3717,7 +3715,7 @@ async function startAnalysis(mode) {
       _summary.pending.image = true;
       imagePromise.then(rep => {
         if (imageRunId !== _imageRunId) return;
-        renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'));
+        renderImageReport(document.getElementById('imageBody'), rep, document.getElementById('imageCount'), false);
         _summary.image = imageSummaryItems(rep);
         _summary.pending.image = false;
         refreshSummary();
@@ -4052,7 +4050,8 @@ function checkRowsHtml(checks) {
   return checks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
 }
 
-function renderImageReport(el, rep, countEl) {
+// showPreview: false in the article analysis, where the link to the image is enough
+function renderImageReport(el, rep, countEl, showPreview = true) {
   if (countEl) countEl.innerHTML = '';
   if (!rep) { el.innerHTML = `<div class="ai-unavailable">${esc(t('img_hero_none'))}</div>`; return; }
   if (rep.loadError) { el.innerHTML = `<div class="ai-unavailable">${t('img_load_error')} <span class="ai-unavailable-detail">${esc(rep.src || rep.fileName)}</span></div>`; return; }
@@ -4080,8 +4079,11 @@ function renderImageReport(el, rep, countEl) {
     ? `<svg class="img-ocr-overlay" viewBox="0 0 ${rep.ocr.width} ${rep.ocr.height}" preserveAspectRatio="none" aria-hidden="true">${rep.ocr.boxes.map(b => `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}"></rect>`).join('')}</svg>`
     : '';
 
-  let html = `<div class="img-report">
-    <figure class="img-preview">${preview ? `<div class="img-frame"><img src="${esc(preview)}" alt="">${boxes}</div>` : ''}${boxes ? `<figcaption>${t('img_boxes_legend')}</figcaption>` : ''}</figure>
+  const figure = showPreview
+    ? `<figure class="img-preview">${preview ? `<div class="img-frame"><img src="${esc(preview)}" alt="">${boxes}</div>` : ''}${boxes ? `<figcaption>${t('img_boxes_legend')}</figcaption>` : ''}</figure>`
+    : '';
+  let html = `<div class="img-report${showPreview ? '' : ' no-preview'}">
+    ${figure}
     <div class="img-checks">
       <div class="check-row"><div class="status-dot a_verifier"></div><div class="check-label">${t('img_source')}</div><div class="check-detail">${sourceDetail}</div></div>
       ${checkRowsHtml(checks)}
