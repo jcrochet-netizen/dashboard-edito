@@ -156,7 +156,7 @@ body {
 
 /* CONTAINER */
 .container {
-  max-width: 900px;
+  max-width: 1048px;
   margin: 0 auto;
   padding: 32px 24px 60px;
 }
@@ -550,19 +550,20 @@ body {
 .img-tips li { margin-bottom: 4px; }
 .check-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .summary-pending { font-size: 12px; color: var(--text-dim); padding: 8px 0 4px; }
-.title-suggestions { margin-top: 14px; }
-.title-suggestions h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.title-suggestions ol { margin: 0; padding-left: 22px; }
-.title-suggestions li { padding: 8px 0; border-bottom: 1px solid var(--surface-2); }
-.title-suggestions li:last-child { border-bottom: none; }
-.ts-title { font-size: 14px; font-weight: 600; color: var(--text); }
-.ts-meta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-.ts-angle { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 1px 6px; border-radius: 3px; background: var(--surface-2); color: var(--text-muted); }
-.ts-angle.discover { color: var(--accent); }
-.ts-angle.search { color: var(--green); }
-.ts-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
 @media (max-width: 640px) { .img-report { grid-template-columns: 1fr; } }
+
+/* Title and image cards side by side under the summary; one alone takes the full width */
+.card-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 16px; margin-bottom: 16px; }
+.card-pair > .card { margin-bottom: 0; }
+.card-pair .check-label { min-width: 120px; }
+/* Smaller photo so the image card fits half the width */
+.card-pair .img-report { grid-template-columns: 140px minmax(0, 1fr); gap: 14px; }
+@media (max-width: 640px) {
+  .card-pair .img-report { grid-template-columns: 1fr; }
+  .card-pair .img-preview { max-width: 240px; }
+  .card-pair .check-label { min-width: auto; }
+}
 
 /* KPI ROW */
 /* All KPI cards on one line, whatever their number */
@@ -1272,6 +1273,22 @@ body {
       </div>
       <div class="card-body" id="summaryBody"></div>
     </div>
+    <div class="card-pair">
+      <div class="card" id="titleCard" style="display:none">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>✏️ <span data-t="title_card">Title analysis</span> <span class="count" id="titleCount"></span></h3>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body" id="titleBody"></div>
+      </div>
+      <div class="card" id="imageCard" style="display:none">
+        <div class="card-header" onclick="toggleCard(this)">
+          <h3>🖼️ <span data-t="img_title">Lead image (Discover)</span> <span class="count" id="imageCount"></span></h3>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="card-body" id="imageBody"></div>
+      </div>
+    </div>
     <div class="export-bar" id="exportBar">
       <button class="export-btn" onclick="exportAll('csv')" title="Export all as CSV">📥 <span data-t="export_all">Export all</span> (CSV)</button>
       <button class="export-btn" onclick="exportAll('json')" title="Export all as JSON">📥 <span data-t="export_all">Export all</span> (JSON)</button>
@@ -1284,20 +1301,6 @@ body {
         <span class="chevron">▼</span>
       </div>
       <div class="card-body" id="discoverBody"></div>
-    </div>
-    <div class="card" id="titleCard" style="display:none">
-      <div class="card-header" onclick="toggleCard(this)">
-        <h3>✏️ <span data-t="title_card">Title analysis</span> <span class="count" id="titleCount"></span></h3>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="card-body" id="titleBody"></div>
-    </div>
-    <div class="card" id="imageCard" style="display:none">
-      <div class="card-header" onclick="toggleCard(this)">
-        <h3>🖼️ <span data-t="img_title">Lead image (Discover)</span> <span class="count" id="imageCount"></span></h3>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="card-body" id="imageBody"></div>
     </div>
     <div class="card" id="discoverInsightsCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
@@ -1529,7 +1532,6 @@ const T = {
     summary_improve: "To improve",
     summary_none: "Nothing to fix: every check is green.",
     summary_count: "{fix} to fix · {improve} to improve",
-    summary_title_suggestion: "Suggested title: {title}",
     summary_fluff_high: "{n} high-impact filler passage(s) to cut",
     summary_fluff_medium: "{n} filler passage(s) to tighten",
     summary_repeated: "{n} fact(s) repeated without new information",
@@ -1570,10 +1572,6 @@ const T = {
     title_promise_kept: "Yes",
     title_promise_overstated: "Overstated",
     title_promise_misleading: "Misleading",
-    title_suggestions_title: "Suggested titles",
-    title_angle_search: "Search",
-    title_angle_discover: "Discover",
-    title_angle_both: "Discover + Search",
     title_pending: "Analysing the title...",
     summary_pending: "Still running: {what}. Their points will be added here.",
     img_text_pct: "{pct}% of the image",
@@ -1947,7 +1945,6 @@ const T = {
     summary_improve: "À améliorer",
     summary_none: "Rien à corriger : tous les contrôles sont au vert.",
     summary_count: "{fix} à corriger · {improve} à améliorer",
-    summary_title_suggestion: "Titre suggéré : {title}",
     summary_fluff_high: "{n} passage(s) de remplissage à fort impact à supprimer",
     summary_fluff_medium: "{n} passage(s) de remplissage à resserrer",
     summary_repeated: "{n} fait(s) répété(s) sans information nouvelle",
@@ -1988,10 +1985,6 @@ const T = {
     title_promise_kept: "Oui",
     title_promise_overstated: "Exagérée",
     title_promise_misleading: "Trompeuse",
-    title_suggestions_title: "Titres proposés",
-    title_angle_search: "Search",
-    title_angle_discover: "Discover",
-    title_angle_both: "Discover + Search",
     title_pending: "Analyse du titre en cours...",
     summary_pending: "En cours : {what}. Leurs points s'ajouteront ici.",
     img_text_pct: "{pct} % de l'image",
@@ -2357,7 +2350,6 @@ const T = {
     summary_improve: "A melhorar",
     summary_none: "Nada a corrigir: todas as verificações estão verdes.",
     summary_count: "{fix} a corrigir · {improve} a melhorar",
-    summary_title_suggestion: "Título sugerido: {title}",
     summary_fluff_high: "{n} trecho(s) de enchimento de alto impacto para cortar",
     summary_fluff_medium: "{n} trecho(s) de enchimento para enxugar",
     summary_repeated: "{n} fato(s) repetido(s) sem informação nova",
@@ -2398,10 +2390,6 @@ const T = {
     title_promise_kept: "Sim",
     title_promise_overstated: "Exagerada",
     title_promise_misleading: "Enganosa",
-    title_suggestions_title: "Títulos sugeridos",
-    title_angle_search: "Search",
-    title_angle_discover: "Discover",
-    title_angle_both: "Discover + Search",
     title_pending: "Analisando o título...",
     summary_pending: "Em andamento: {what}. Os pontos serão adicionados aqui.",
     img_text_pct: "{pct}% da imagem",
@@ -2768,7 +2756,6 @@ const T = {
     summary_improve: "A mejorar",
     summary_none: "Nada que corregir: todas las comprobaciones están en verde.",
     summary_count: "{fix} a corregir · {improve} a mejorar",
-    summary_title_suggestion: "Título sugerido: {title}",
     summary_fluff_high: "{n} pasaje(s) de relleno de alto impacto que eliminar",
     summary_fluff_medium: "{n} pasaje(s) de relleno que ajustar",
     summary_repeated: "{n} dato(s) repetido(s) sin información nueva",
@@ -2809,10 +2796,6 @@ const T = {
     title_promise_kept: "Sí",
     title_promise_overstated: "Exagerada",
     title_promise_misleading: "Engañosa",
-    title_suggestions_title: "Títulos sugeridos",
-    title_angle_search: "Search",
-    title_angle_discover: "Discover",
-    title_angle_both: "Discover + Search",
     title_pending: "Analizando el título...",
     summary_pending: "En curso: {what}. Sus puntos se añadirán aquí.",
     img_text_pct: "{pct} % de la imagen",
@@ -7151,9 +7134,7 @@ function renderSummary(items, pending) {
 }
 
 // ========== TITLE REVIEW ==========
-// Dedicated call: titles were a by-product of long prompts and came out weak. GPT-5 writes better ones;
-// GPT-4o takes over when the key has no access to it
-const TITLE_MODEL = 'gpt-5';
+// Dedicated call, so the headline gets a focused review instead of side fields of longer prompts
 const TITLE_SEARCH_MAX = 70;   // Google Search shows about 60-65 characters of a title
 const TITLE_MAX = 100;
 
@@ -7162,7 +7143,7 @@ async function runTitleAnalysis(title, bodyText) {
   const lead = paragraphs[0] || '';
   const excerpt = bodyText.split(/\s+/).slice(0, 1500).join(' ');
   const langName = LANG === 'fr' ? 'French' : LANG === 'pt-br' ? 'Brazilian Portuguese' : LANG === 'es' ? 'Spanish' : 'English';
-  const system = `You are the head of SEO and audience for a network of sports news sites. You review an article's headline for Google Discover and Google Search, then write better headlines.
+  const system = `You are the head of SEO and audience for a network of sports news sites. You review an article's headline for Google Discover and Google Search.
 
 How Google treats headlines:
 - Search: the main query (who + what: player, club, competition, transfer, injury...) must appear, ideally in the first words. Google shows about 60-65 characters, so the key information comes first. One clear subject, no keyword stuffing.
@@ -7171,8 +7152,7 @@ How Google treats headlines:
 
 Teasing is this network's editorial line: headlines often withhold the name of the player a club is targeting ("une autre cible en défense", "un crack de Premier League", "ce milieu"). When the original headline does that:
 - it is a deliberate choice, not a flaw: set teasing to true, never list the teased name as missing, and never call the headline imprecise, bland or clickbait because of it;
-- judge the main keyword on what the headline does name (club, competition, position, transfer window), not on the teased player;
-- keep the teasing in every suggested headline: never reveal the teased name.
+- judge the main keyword on what the headline does name (club, competition, position, transfer window), not on the teased player.
 
 Your review:
 - keywords: the query a reader would type to find this article, where it sits in the headline, and important names from the article that are missing from it.
@@ -7180,20 +7160,13 @@ Your review:
 - emotion: how vivid or emotional the wording is.
 - alignment with the lead paragraph, balance (clickbait / bland / balanced), and whether the article keeps the headline's promise.
 
-Your headlines:
-- Write 5 headlines in the language of the original headline, in the site's style (keep a prefix such as "Mercato OM :" when the original has one).
-- Use only facts from the article: never invent a figure, a quote, a club or a decision, and keep its level of certainty (if the article says "could", never write "has signed").
-- 2 written for Search (main query in the first words, 65 characters or fewer), 2 for Discover (named entity plus a concrete hook, a figure or an emotion when the article supports it, 60 to 90 characters), 1 that works for both.
-- Each one must beat the original on at least one criterion; say which in "why".
-- Natural capitalisation for the language (in French, only the first word and proper nouns take a capital).
-
-Answer only through the title_report tool. Write every comment and "why" in ${langName}; write the headlines in the article's language.`;
+Answer only through the title_report tool. Write every comment in ${langName}.`;
   const comment = { type: 'string', description: 'Short. Empty when there is nothing to fix' };
   const tool = {
     type: 'function',
     function: {
       name: 'title_report',
-      description: 'Headline review for Google Discover and Search, with better headlines',
+      description: 'Headline review for Google Discover and Search',
       parameters: {
         type: 'object',
         properties: {
@@ -7219,37 +7192,25 @@ Answer only through the title_report tool. Write every comment and "why" in ${la
             comment }, required: ['status', 'comment'] },
           promise: { type: 'object', properties: {
             status: { type: 'string', enum: ['kept', 'overstated', 'misleading'], description: 'Does the article deliver what the headline promises' },
-            comment }, required: ['status', 'comment'] },
-          suggestions: { type: 'array', description: 'Exactly 5 headlines', items: { type: 'object', properties: {
-            title: { type: 'string' },
-            angle: { type: 'string', enum: ['search', 'discover', 'both'] },
-            why: { type: 'string', description: 'What makes it better than the original, in one sentence' } }, required: ['title', 'angle', 'why'] } }
+            comment }, required: ['status', 'comment'] }
         },
-        required: ['keywords', 'teasing', 'numbers', 'emotion', 'alignment', 'balance', 'promise', 'suggestions']
+        required: ['keywords', 'teasing', 'numbers', 'emotion', 'alignment', 'balance', 'promise']
       }
     }
   };
-  const ask = async model => {
-    const data = await callOpenAI({
-      model,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: `HEADLINE: ${title}\n\nLEAD: ${lead}\n\nARTICLE (excerpt):\n${excerpt}` }
-      ],
-      tools: [tool],
-      tool_choice: { type: 'function', function: { name: 'title_report' } },
-      // Reasoning models refuse a custom temperature
-      ...(model === OPENAI_MODEL ? { temperature: 0.5 } : { reasoning_effort: 'low' })
-    });
-    const tc = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!tc) throw new Error(t('err_no_tool'));
-    return { ...JSON.parse(tc.function.arguments), model };
-  };
-  try { return await ask(TITLE_MODEL); }
-  catch (e) {
-    console.warn(`Title review with ${TITLE_MODEL} failed, retrying with ${OPENAI_MODEL}:`, e.message);
-    return await ask(OPENAI_MODEL);
-  }
+  const data = await callOpenAI({
+    model: OPENAI_MODEL,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: `HEADLINE: ${title}\n\nLEAD: ${lead}\n\nARTICLE (excerpt):\n${excerpt}` }
+    ],
+    tools: [tool],
+    tool_choice: { type: 'function', function: { name: 'title_report' } },
+    temperature: 0.2
+  });
+  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!tc) throw new Error(t('err_no_tool'));
+  return JSON.parse(tc.function.arguments);
 }
 
 // Rows of the title card. "bonus" rows (figure, emotion) are never a fault: green when present, grey otherwise
@@ -7284,11 +7245,8 @@ function verdictRowsHtml(rows) {
 }
 
 function titleSummaryItems(title, rep) {
-  const items = titleChecks(title, rep).filter(r => r.status === 'fail' || r.status === 'warning')
+  return titleChecks(title, rep).filter(r => r.status === 'fail' || r.status === 'warning')
     .map(r => ({ level: r.status === 'fail' ? 'fix' : 'improve', sec: 'title', text: r.label + ' — ' + r.value + (r.why ? '. ' + r.why : '') }));
-  const best = rep && rep !== 'pending' && !rep.error ? (rep.suggestions || [])[0] : null;
-  if (items.length && best?.title) items.push({ level: 'improve', sec: 'title', text: t('summary_title_suggestion', { title: best.title }) });
-  return items;
 }
 
 // rep: the title review, 'pending' while it runs, null when the AI options are unticked
@@ -7300,12 +7258,6 @@ function renderTitleCard(title, rep) {
   if (rep === 'pending') html += `<div class="summary-pending">${t('title_pending')}</div>`;
   else if (!rep) html += `<div class="ai-unavailable" style="margin-top:8px">${esc(t('title_no_ai'))}</div>`;
   else if (rep.error) html += `<div class="ai-unavailable" style="margin-top:8px">${t('ai_unavailable')} <span class="ai-unavailable-detail">(${esc(rep.error)})</span></div>`;
-  else if (rep.suggestions?.length) {
-    const badge = rep.model === OPENAI_MODEL ? 'GPT-4o' : rep.model.toUpperCase();
-    html += `<div class="title-suggestions"><h4>💡 ${t('title_suggestions_title')} <span class="ai-badge">${esc(badge)}</span></h4><ol>`;
-    html += rep.suggestions.map(sg => `<li><div class="ts-title">${esc(sg.title)}</div><div class="ts-meta"><span class="ts-angle ${esc(sg.angle)}">${t('title_angle_' + (sg.angle || 'both'))}</span> · ${t('title_chars', { n: (sg.title || '').length })}</div>${sg.why ? `<div class="ts-why">${esc(sg.why)}</div>` : ''}</li>`).join('');
-    html += `</ol></div>`;
-  }
   document.getElementById('titleBody').innerHTML = html;
   // Bonus rows (figure, emotion) never count against the title
   const judged = rows.filter(r => !r.bonus);
