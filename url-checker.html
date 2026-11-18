@@ -1723,7 +1723,7 @@ const T = {
     chance_act_crowded: "Topic heavily covered in the last 10 days: bring a new angle so you don't compete with your own articles.",
     chance_act_low: "Few Discover signals on this topic: aim for Search, or an angle closer to the site's strong topics.",
     chance_act_off: "Topic outside the site's themes: aim for Search rather than Discover.",
-    chance_ref: "Reference:",
+    chance_ref: "Best article on this topic (90 days):",
     chance_clicks: "{n} clicks in {days} days",
     chance_details: "See the detailed figures",
     authority_90d: "Last 90 days",
@@ -2158,7 +2158,7 @@ const T = {
     chance_act_crowded: "Sujet très traité ces 10 derniers jours : apportez un angle neuf pour ne pas concurrencer vos propres articles.",
     chance_act_low: "Peu de signaux Discover sur ce sujet : visez plutôt Search, ou un angle plus proche des sujets forts du site.",
     chance_act_off: "Sujet hors des thèmes du site : visez plutôt Search que Discover.",
-    chance_ref: "Référence :",
+    chance_ref: "Meilleur article sur ce sujet (90 jours) :",
     chance_clicks: "{n} clics en {days} jours",
     chance_details: "Voir les chiffres détaillés",
     authority_90d: "90 derniers jours",
@@ -2572,7 +2572,7 @@ const T = {
     chance_act_crowded: "Tema muito tratado nos últimos 10 dias: traga um ângulo novo para não competir com os próprios artigos.",
     chance_act_low: "Poucos sinais de Discover sobre o tema: mire no Search ou num ângulo mais próximo dos temas fortes do site.",
     chance_act_off: "Tema fora dos temas do site: mire no Search em vez do Discover.",
-    chance_ref: "Referência:",
+    chance_ref: "Melhor artigo sobre o tema (90 dias):",
     chance_clicks: "{n} cliques em {days} dias",
     chance_details: "Ver os números detalhados",
     authority_90d: "Últimos 90 dias",
@@ -3004,7 +3004,7 @@ const T = {
     chance_act_crowded: "Tema muy tratado en los últimos 10 días: aporta un ángulo nuevo para no competir con tus propios artículos.",
     chance_act_low: "Pocas señales de Discover sobre el tema: apunta a Search o a un ángulo más cercano a los temas fuertes del sitio.",
     chance_act_off: "Tema fuera de los temas del sitio: apunta a Search antes que a Discover.",
-    chance_ref: "Referencia:",
+    chance_ref: "Mejor artículo sobre el tema (90 días):",
     chance_clicks: "{n} clics en {days} días",
     chance_details: "Ver las cifras detalladas",
     authority_90d: "Últimos 90 días",
@@ -6345,12 +6345,14 @@ function parseHTMLTable(html) {
 
 const STOP_WORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','not','no','nor','so','if','up','out','about','into','over','after','le','la','les','de','du','des','un','une','et','en','au','aux','par','pour','sur','dans','ce','se','il','que','qui','son','sa','ses','cette','est','o','os','as','um','uma','do','da','dos','das','no','na','nos','nas','em','por','com','para','que','se','seu','sua','seus','suas','este','esta','el','los','las','del','al','con','como','pero','mas','mercato','transfer','news','football','soccer','latest','update','report','exclusive']);
 
+// Keywords are matched against URL slugs, which carry no accents: "barça" must become "barca"
 function extractTopicKeywords(title) {
   return title.toLowerCase()
     .replace(/[‘’`]/g, "'")
     .replace(/[^\p{L}\p{N}' -]/gu, ' ')
     .split(/[\s-]+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+    .map(w => w.normalize('NFD').replace(/\p{Diacritic}/gu, ''));
 }
 
 async function runDiscoverAuthority(url, title, overrideTab) {
@@ -6384,8 +6386,12 @@ async function runDiscoverAuthority(url, title, overrideTab) {
     return keywords.some(kw => slug.includes(kw));
   });
 
-  // Prepare compact data for AI: send indexed slug + stats for candidates (max 150)
-  const subset = candidates.slice(0, 150);
+  // Prepare compact data for AI: send indexed slug + stats for candidates (max 150).
+  // URLs naming the title's proper nouns (Barça, Deco...) come first, so generic words of the title
+  // ("après", "autre"...) don't take their place in the list
+  const entityKw = new Set(extractTopicKeywords(title.split(/\s+/).slice(1).filter(w => /^\p{Lu}/u.test(w)).join(' ')));
+  const relevance = r => { const slug = r.url.toLowerCase(); return keywords.reduce((a, kw) => a + (slug.includes(kw) ? (entityKw.has(kw) ? 3 : 1) : 0), 0); };
+  const subset = candidates.map(r => ({ r, score: relevance(r) })).sort((a, b) => b.score - a.score).map(x => x.r).slice(0, 150);
   const compactList = subset.map((r, i) => {
     const path = r.url.replace(/https?:\/\/[^/]+/, '');
     return `[${i}] ${path} | ${r.clicks} | ${r.impressions}`;
@@ -6405,7 +6411,8 @@ async function runDiscoverAuthority(url, title, overrideTab) {
       messages: [
         { role: 'system', content: `You are a Discover performance analyst. The user is checking an article. You have a numbered list of Discover URLs from the same site (pre-filtered by keyword).
 
-Identify which URLs are truly about the SAME TOPIC as the article (same team, player, event, or subject — not just vaguely related). Return the topic name and the indices of matching URLs. Do NOT compute any stats — just identify matches.
+Name the article's topic at the level an editor uses to look up the site's Discover figures: the main club, player, team or competition plus the kind of story, in 2 to 4 words, in the language of the article title (e.g. "mercato Barça", "transfert PSG", "blessure Mbappé", "Ligue des champions"). Never the specific angle of this article (not "Barça winter mercato complications").
+Then return the indices of the URLs about that same topic: same main entity and same kind of story, whatever the player or the angle (for "mercato Barça": every Barça transfer story). Do NOT compute any stats — just identify matches.
 
 Also rate how the article topic fits the site's editorial scope (site_fit): core = one of its core topics, adjacent = related but not core, off = outside its scope.${siteContext}
 
@@ -6420,7 +6427,7 @@ URL list format: [index] path | clicks | impressions` },
           parameters: {
             type: 'object',
             properties: {
-              topic: { type: 'string', description: 'The article topic in 2-5 words (e.g. "Chelsea transfer window", "Lamine Camara future")' },
+              topic: { type: 'string', description: 'Broad topic in 2-4 words, in the article language: main entity + kind of story (e.g. "mercato Barça", "Chelsea transfers", "blessure Mbappé")' },
               matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' },
               site_fit: { type: 'string', enum: ['core', 'adjacent', 'off'] }
             },
@@ -6522,8 +6529,8 @@ URL list format: [index] path | clicks | impressions` },
       trend: trend,
       site_fit: gpt.site_fit || 'core',
       topic_median_clicks: count > 0 ? computeMedian(matchingRows.map(r => r.clicks)) : 0,
-      // Best recent article on the topic, shown to the editor as a reference
-      reference: match30.top_articles?.[0] ? { ...match30.top_articles[0], days: 30 } : topArticlesMain[0] ? { ...topArticlesMain[0], days: 90 } : null
+      // Best article on the topic over 90 days: a model to follow (the best of 30 days could be a lone weak one)
+      reference: topArticlesMain[0] ? { ...topArticlesMain[0], days: 90 } : null
     };
     return result;
   } catch(e) { return null; }
