@@ -361,6 +361,11 @@ body {
 .fluff-feedback-btn:disabled { cursor: default; opacity: 0.7; }
 .fluff-feedback-btn.fluff-confirm:hover { border-color: var(--red); color: var(--red); }
 .fluff-feedback-btn.fluff-dismiss:hover { border-color: var(--green); color: var(--green); }
+.spell-ignore-btn { margin-left: auto; flex-shrink: 0; align-self: center; }
+.rf-actions { display: inline-flex; gap: 6px; margin-left: auto; }
+.rf-actions .fluff-feedback-btn { padding: 2px 8px; }
+.rf-verdict { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.rf-verdict.confirmed { color: var(--red); }
 
 /* Fluff split layout */
 .fluff-split { display: flex; gap: 0; min-height: 300px; border-top: 1px solid var(--border); }
@@ -852,7 +857,7 @@ body {
   body { background: #fff !important; }
   .topbar, .input-section, .error-box, .progress-bar, .footer,
   .modal-overlay, .export-btn-wrap, .export-bar,
-  .fluff-feedback-btn, .fluff-review-actions, #reviewerSelect, .mode-tabs,
+  .fluff-feedback-btn, .fluff-review-actions, .rf-actions, #reviewerSelect, .mode-tabs,
   [data-export-hide] { display: none !important; }
   .results { padding: 0 !important; }
   .results.active { display: block !important; }
@@ -1517,6 +1522,11 @@ const T = {
     fluff_dismiss_title: "Dismiss this flag — the sentence is fine",
     fluff_confirmed: "Confirmed",
     fluff_dismissed: "Dismissed",
+    spell_ignore_btn: "Ignore",
+    spell_ignore_title: "Not a mistake (a club or player name, for instance): hidden here and in the team's next analyses",
+    repeated_ok_btn: "Yes, it's repeated",
+    repeated_ok_title: "Confirm the same fact is restated with nothing new",
+    repeated_dismiss_title: "Not a repetition: the article says it once, or adds something new each time",
     fluff_export_btn: "Export feedback",
     fluff_export_title: "Download all fluff feedback as CSV",
     fluff_export_entries: "entries",
@@ -1986,6 +1996,11 @@ const T = {
     fluff_dismiss_title: "Ignorer ce signalement — la phrase est correcte",
     fluff_confirmed: "Confirmé",
     fluff_dismissed: "Ignoré",
+    spell_ignore_btn: "Oublier",
+    spell_ignore_title: "Ce n'est pas une faute (nom de club ou de joueur, par exemple) : masqué ici et dans les prochaines analyses de l'équipe",
+    repeated_ok_btn: "Oui, c'est répété",
+    repeated_ok_title: "Confirmer que le même fait est redit sans rien de nouveau",
+    repeated_dismiss_title: "Pas une répétition : l'article le dit une seule fois, ou ajoute du nouveau à chaque fois",
     fluff_export_btn: "Exporter les retours",
     fluff_export_title: "Télécharger tous les retours fluff en CSV",
     fluff_export_entries: "entrées",
@@ -2446,6 +2461,11 @@ const T = {
     fluff_dismiss_title: "Ignorar este alerta — a frase está correta",
     fluff_confirmed: "Confirmado",
     fluff_dismissed: "Ignorado",
+    spell_ignore_btn: "Ignorar",
+    spell_ignore_title: "Não é um erro (nome de clube ou de jogador, por exemplo): ocultado aqui e nas próximas análises da equipe",
+    repeated_ok_btn: "Sim, está repetido",
+    repeated_ok_title: "Confirmar que o mesmo fato é repetido sem nada novo",
+    repeated_dismiss_title: "Não é repetição: o artigo diz isso uma vez só, ou acrescenta algo novo a cada vez",
     fluff_export_btn: "Exportar feedback",
     fluff_export_title: "Baixar todos os feedbacks de enchimento em CSV",
     fluff_export_entries: "entradas",
@@ -2906,6 +2926,11 @@ const T = {
     fluff_dismiss_title: "Descartar esta alerta — la frase está bien",
     fluff_confirmed: "Confirmado",
     fluff_dismissed: "Descartado",
+    spell_ignore_btn: "Ignorar",
+    spell_ignore_title: "No es un error (nombre de club o de jugador, por ejemplo): oculto aquí y en los próximos análisis del equipo",
+    repeated_ok_btn: "Sí, está repetido",
+    repeated_ok_title: "Confirmar que el mismo dato se repite sin nada nuevo",
+    repeated_dismiss_title: "No es una repetición: el artículo lo dice una sola vez, o añade algo nuevo cada vez",
     fluff_export_btn: "Exportar feedback",
     fluff_export_title: "Descargar todos los comentarios de relleno en CSV",
     fluff_export_entries: "entradas",
@@ -3429,8 +3454,51 @@ async function fetchFluffFeedback() {
   return merged;
 }
 
+// The same sheet keeps the spelling "Ignore" clicks and the repeated-fact verdicts,
+// told apart by the "Tests Failed" column
+const FEEDBACK_SPELL = 'spelling', FEEDBACK_REPEATED = 'repeated-fact';
+function feedbackKind(r) {
+  const k = String(r.tests_failed || '').trim();
+  return k === FEEDBACK_SPELL || k === FEEDBACK_REPEATED ? k : 'fluff';
+}
+function feedbackIsNo(r) { return !String(r.verdict || '').toLowerCase().includes('yes'); }
+function normFeedbackText(s) { return String(s || '').toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim(); }
+// Texts the team marked as not a problem, for one kind of feedback
+function dismissedTexts(feedback, kind) {
+  return new Set((feedback || []).filter(r => feedbackKind(r) === kind && feedbackIsNo(r)).map(r => normFeedbackText(r.quote)));
+}
+
+// Saves a verdict in this browser and in the team sheet (fire-and-forget)
+function sendFeedback({ quote, tests_failed, verdict, action }) {
+  const articleUrl = document.getElementById('resultUrl')?.textContent || '';
+  let domain = '';
+  try { domain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : ''; } catch(e) {}
+  let reviewer = document.getElementById('reviewerSelect')?.value || '';
+  try { if (!reviewer) reviewer = localStorage.getItem('media_dashboard_reviewer') || ''; } catch(e) {}
+  try {
+    const key = 'media_dashboard_fluff_feedback';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    existing.push({ url: articleUrl, domain, quote, tests_failed, action, reviewer, ts: Date.now() });
+    if (existing.length > 1000) existing.splice(0, existing.length - 1000);
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch(e) {}
+  try {
+    const proxy = getGasProxy();
+    if (proxy) fetch(proxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'feedback', url: articleUrl, domain, quote, tests_failed, verdict, reviewer, _pw: getAccessCode() }),
+      redirect: 'follow'
+    }).catch(() => {});
+  } catch(e) {}
+  // The next analysis must take this verdict into account right away
+  _feedbackCache = null;
+}
+
 function buildCalibrationBlock(feedback, currentDomain) {
-  if (!feedback || feedback.length === 0) return '';
+  const repeatedNo = (feedback || []).filter(r => feedbackKind(r) === FEEDBACK_REPEATED && feedbackIsNo(r));
+  feedback = (feedback || []).filter(r => feedbackKind(r) === 'fluff');
+  if (feedback.length === 0 && repeatedNo.length === 0) return '';
   // Aggregate: per domain, per test → confirm vs dismiss counts
   const stats = {};
   feedback.forEach(row => {
@@ -3479,8 +3547,12 @@ function buildCalibrationBlock(feedback, currentDomain) {
     lines.push(`- Examples of sentences editors said are NOT fluff (do not flag similar patterns):\n  ${dismissedQuotes.join('\n  ')}`);
   }
 
+  if (repeatedNo.length > 0) {
+    lines.push(`- Facts editors said were NOT repeated (stated once, or each mention adds something new). Before flagging a repeated fact, find both sentences in the ARTICLE BODY:\n  ${repeatedNo.slice(-5).map(r => `"${String(r.quote || '').substring(0, 120)}"`).join('\n  ')}`);
+  }
+
   if (lines.length === 0) return '';
-  return '\n\nCALIBRATION FROM EDITOR FEEDBACK (' + feedback.length + ' reviews):\n' + lines.join('\n');
+  return '\n\nCALIBRATION FROM EDITOR FEEDBACK (' + (feedback.length + repeatedNo.length) + ' reviews):\n' + lines.join('\n');
 }
 
 // ========== OPENAI PROXY ==========
@@ -6086,6 +6158,8 @@ async function runSpellcheck(bodyText, doc) {
   const words = bodyText.split(/\s+/);
   const truncated = words.slice(0, 4000).join(' ');
   if (truncated.length < 20) return null;
+  // Read while GPT works: words the team marked "Ignore"
+  const feedbackPromise = fetchFluffFeedback().catch(() => []);
 
   const langHint = detectLanguageHint(doc);
   const langLine = langHint
@@ -6233,6 +6307,9 @@ Respond ONLY via the spellcheck_report tool.`;
         seen.add(key);
         return true;
       });
+      // Words an editor marked "Ignore" (a club name close to another word...) are never flagged again
+      const ignored = dismissedTexts(await feedbackPromise, FEEDBACK_SPELL);
+      result.errors = result.errors.filter(e => !ignored.has(normFeedbackText(e.original)));
     }
     return result;
   } catch(e) { return null; }
@@ -6386,7 +6463,14 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
     const tc = r.value.choices?.[0]?.message?.tool_calls?.[0];
     try { return tc ? JSON.parse(tc.function.arguments) : null; } catch(e) { return null; }
   }).filter(Boolean);
-  return passes.length ? mergeQualityPasses(passes) : null;
+  if (!passes.length) return null;
+  const merged = mergeQualityPasses(passes);
+  // What an editor already marked as not a problem stays hidden when an article is analysed again
+  const feedback = await fetchFluffFeedback().catch(() => []);
+  const noFluff = dismissedTexts(feedback, 'fluff'), noRepeated = dismissedTexts(feedback, FEEDBACK_REPEATED);
+  merged.fluff = merged.fluff.filter(f => !noFluff.has(normFeedbackText(f.quote)));
+  merged.article_identity.repeated_facts = merged.article_identity.repeated_facts.filter(f => !noRepeated.has(normFeedbackText(f.fact)));
+  return merged;
 }
 
 // Same sentence seen by two passes: identical once normalised, one inside the other, or mostly the same words
@@ -7419,16 +7503,17 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   }
   if (spellResult) {
     const errCount = spellResult.errors?.length || 0;
-    kpis.push({ label: t('kpi_spell'), value: errCount, color: errCount===0?'green':errCount<=3?'amber':'red', target: errCount ? 'spellBody' : null });
+    kpis.push({ id: 'kpiSpell', label: t('kpi_spell'), value: errCount, color: errCount===0?'green':errCount<=3?'amber':'red', target: errCount ? 'spellBody' : null });
   }
   if (qualityResult) {
-    const qIssues = (qualityResult.fluff || []).filter(f => f.severity === 'high' || f.severity === 'medium').length + (qualityResult.article_identity?.repeated_facts?.length || 0);
-    kpis.push({ label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red' });
+    const active = activeQualityIssues(qualityResult);
+    const qIssues = active.fluff.length + active.repeated.length;
+    kpis.push({ id: 'kpiQuality', label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red' });
   }
   // target: id of the section the card scrolls to (fixed ids from this file, safe in the attribute)
   document.getElementById('kpiRow').innerHTML = kpis.map(k => {
     const link = k.target ? ` kpi-link" role="button" tabindex="0" title="${t('jump_see')}" onclick="jumpToSection('${k.target}')" onkeydown="if(event.key==='Enter')jumpToSection('${k.target}')` : '';
-    return `<div class="kpi-card${link}"><div class="kpi-value ${k.color}"><span class="tl-dot ${k.color}"></span>${k.value}</div><div class="kpi-label">${k.label}</div></div>`;
+    return `<div class="kpi-card${link}"${k.id ? ` id="${k.id}"` : ''}><div class="kpi-value ${k.color}"><span class="tl-dot ${k.color}"></span>${k.value}</div><div class="kpi-label">${k.label}</div></div>`;
   }).join('');
 
   const discoverColor = discoverOk===discoverTotal?'green':discoverOk>=discoverTotal-2?'amber':'red';
@@ -7482,7 +7567,9 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   renderSearchInsights(searchAuthority);
 }
 
+let _spellView = null;
 function renderSpellcheck(spell) {
+  _spellView = spell;
   const errors = spell.errors || [];
   const lang = spell.detected_language || '?';
   const countColor = errors.length === 0 ? 'green' : errors.length <= 3 ? 'amber' : 'red';
@@ -7497,7 +7584,7 @@ function renderSpellcheck(spell) {
     return;
   }
 
-  html += errors.map(e => `<div class="spell-error-row">
+  html += errors.map((e, i) => `<div class="spell-error-row">
     <span class="spell-type">${t('spell_type_' + e.type) || e.type}</span>
     <div style="flex:1">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -7507,8 +7594,28 @@ function renderSpellcheck(spell) {
       </div>
       <div class="spell-context">"...${esc((e.context||'').length > 120 ? e.context.substring(0, 120) + '...' : e.context)}..."</div>
     </div>
+    <button class="fluff-feedback-btn spell-ignore-btn" onclick="ignoreSpellError(${i})" title="${esc(t('spell_ignore_title'))}">${esc(t('spell_ignore_btn'))}</button>
   </div>`).join('');
   body.innerHTML = html;
+}
+
+// "Ignore": not a mistake. Hidden here (every occurrence of the word) and in the team's next analyses
+function ignoreSpellError(i) {
+  const spell = _spellView, e = spell?.errors?.[i];
+  if (!e) return;
+  sendFeedback({ quote: e.original, tests_failed: FEEDBACK_SPELL, verdict: 'NO not a mistake', action: 'dismiss' });
+  const key = normFeedbackText(e.original);
+  spell.errors = spell.errors.filter(x => normFeedbackText(x.original) !== key);
+  renderSpellcheck(spell);
+  const n = spell.errors.length;
+  setKpi('kpiSpell', n, n === 0 ? 'green' : n <= 3 ? 'amber' : 'red');
+  _summary.base = _summary.base.filter(it => it.sec !== 'spell').concat(spellSummaryItems(spell));
+  refreshSummary();
+}
+
+function setKpi(id, value, color) {
+  const v = document.querySelector('#' + id + ' .kpi-value');
+  if (v) { v.className = 'kpi-value ' + color; v.innerHTML = `<span class="tl-dot ${color}"></span>${esc(String(value))}`; }
 }
 
 // Category → highlight color class mapping
@@ -7540,19 +7647,52 @@ function summaryFromChecks(sec, checks, tag) {
     .map(c => ({ level: c.status === 'fail' ? 'fix' : 'improve', sec, tag, text: c.label + ' — ' + c.detail }));
 }
 
+function spellSummaryItems(spell) {
+  const n = spell?.errors?.length || 0;
+  return n ? [{ level: 'improve', sec: 'spell', target: 'spellBody', text: t('summary_spell', { n }) }] : [];
+}
+
+// Fluff and repeated facts an editor marked as not a problem no longer count
+function activeQualityIssues(q) {
+  const fluff = (q?.fluff || []).filter(f => (f.severity === 'high' || f.severity === 'medium') && !f._dismissed);
+  const repeated = (q?.article_identity?.repeated_facts || []).filter(f => !f._dismissed);
+  return { fluff, repeated, high: fluff.filter(f => f.severity === 'high').length, medium: fluff.filter(f => f.severity === 'medium').length };
+}
+
+function qualitySummaryItems(q) {
+  if (!q) return [];
+  const { high, medium, repeated } = activeQualityIssues(q);
+  const items = [];
+  if (high) items.push({ level: 'fix', sec: 'quality', text: t('summary_fluff_high', { n: high }) });
+  if (medium) items.push({ level: 'improve', sec: 'quality', text: t('summary_fluff_medium', { n: medium }) });
+  if (repeated.length) items.push({ level: 'improve', sec: 'quality', text: t('summary_repeated', { n: repeated.length }) });
+  return items;
+}
+
+function qualityCountHtml(q) {
+  const { fluff, repeated, high, medium } = activeQualityIssues(q);
+  const total = fluff.length + repeated.length;
+  const color = high > 0 || repeated.length > 0 ? 'red' : (medium > 0 || total > 0) ? 'amber' : 'green';
+  return `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${total === 0 ? 'OK' : total + ' issue(s)'}`;
+}
+
+// After a "not a problem" verdict: card header, KPI and summary follow
+function refreshQualityCounts() {
+  const q = _qualityView?.q;
+  if (!q) return;
+  document.getElementById('qualityCount').innerHTML = qualityCountHtml(q);
+  const { fluff, repeated } = activeQualityIssues(q);
+  const n = fluff.length + repeated.length;
+  setKpi('kpiQuality', n, n === 0 ? 'green' : n <= 2 ? 'amber' : 'red');
+  _summary.base = _summary.base.filter(it => it.sec !== 'quality').concat(qualitySummaryItems(q));
+  refreshSummary();
+}
+
 function buildSummaryItems(discoverChecks, contentChecks, q, ai, spellResult) {
   // Title items come from the dedicated title review (titleSummaryItems)
   const items = summaryFromChecks('discover', discoverChecks);
   items.push(...summaryFromChecks('structure', contentChecks));
-  if (q) {
-    const fluff = q.fluff || [];
-    const high = fluff.filter(f => f.severity === 'high').length, med = fluff.filter(f => f.severity === 'medium').length;
-    const repeated = q.article_identity?.repeated_facts?.length || 0;
-    if (high) items.push({ level: 'fix', sec: 'quality', text: t('summary_fluff_high', { n: high }) });
-    if (med) items.push({ level: 'improve', sec: 'quality', text: t('summary_fluff_medium', { n: med }) });
-    if (repeated) items.push({ level: 'improve', sec: 'quality', text: t('summary_repeated', { n: repeated }) });
-  }
-  if (spellResult?.errors?.length) items.push({ level: 'improve', sec: 'spell', target: 'spellBody', text: t('summary_spell', { n: spellResult.errors.length }) });
+  items.push(...qualitySummaryItems(q), ...spellSummaryItems(spellResult));
   const src = ai?.lecture_editoriale?.sourcing_present;
   if (src && src.statut !== 'ok') items.push({ level: src.statut === 'fail' ? 'fix' : 'improve', sec: 'editorial', text: t('ai_sourcing') + ' — ' + (src.commentaire || '') });
   // Free-text weaknesses from the AI Discover review, capped to keep the summary short
@@ -7724,6 +7864,8 @@ function renderTitleCard(title, rep) {
   document.getElementById('titleCount').innerHTML = rep === 'pending' ? '' : `<span class="tl-dot ${color}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: okCount, n: total })}`;
 }
 
+// The rendered quality result: the feedback buttons mark its items as dismissed
+let _qualityView = null;
 function renderQuality(q, bodyText) {
   const body = document.getElementById('qualityBody');
   // Filter out "low" severity — only show high and medium (damaging fluff)
@@ -7736,9 +7878,8 @@ function renderQuality(q, bodyText) {
   const lowCount = (q.fluff || []).filter(f => f.severity === 'low').length;
   const repeatedCount = (ai && ai.repeated_facts) ? ai.repeated_facts.length : 0;
   // Title alignment and balance are shown in the title card, right under Discover eligibility
-  const totalIssues = fluff.length + repeatedCount;
-  const countColor = highCount > 0 || repeatedCount > 0 ? 'red' : (medCount > 0 || totalIssues > 0) ? 'amber' : 'green';
-  document.getElementById('qualityCount').innerHTML = `<span class="tl-dot ${countColor}" style="width:8px;height:8px"></span> ${totalIssues === 0 ? 'OK' : totalIssues + ' issue(s)'}`;
+  _qualityView = { q, fluff };
+  document.getElementById('qualityCount').innerHTML = qualityCountHtml(q);
 
   let html = '';
   // Article identity (topic detected by AI)
@@ -7752,11 +7893,12 @@ function renderQuality(q, bodyText) {
     // List each repeated fact with detail
     if (ai.repeated_facts && ai.repeated_facts.length > 0) {
       html += `<div style="padding:2px 16px 8px 32px">`;
-      ai.repeated_facts.forEach(rf => {
+      ai.repeated_facts.forEach((rf, i) => {
         const posInfo = rf.positions && rf.positions.length > 0
           ? ` — ${rf.positions.join(', ')}`
           : '';
-        html += `<div style="font-size:12px;color:var(--text-muted);line-height:1.8;display:flex;gap:6px;align-items:baseline"><span style="color:var(--severity-high,#ef4444)">•</span> <span>${esc(rf.fact)}</span> <span style="font-size:11px;opacity:0.6;white-space:nowrap">(${rf.locations}x${esc(posInfo)})</span></div>`;
+        html += `<div id="rf_${i}" style="font-size:12px;color:var(--text-muted);line-height:1.8;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline"><span style="color:var(--severity-high,#ef4444)">•</span> <span class="rf-fact">${esc(rf.fact)}</span> <span style="font-size:11px;opacity:0.6;white-space:nowrap">(${rf.locations}x${esc(posInfo)})</span>
+          <span class="rf-actions"><button class="fluff-feedback-btn fluff-confirm" onclick="repeatedFeedback(${i},'confirm')" title="${esc(t('repeated_ok_title'))}">${esc(t('repeated_ok_btn'))}</button><button class="fluff-feedback-btn fluff-dismiss" onclick="repeatedFeedback(${i},'dismiss')" title="${esc(t('repeated_dismiss_title'))}">${esc(t('fluff_dismiss_btn'))}</button></span></div>`;
       });
       html += `</div>`;
     }
@@ -7936,38 +8078,33 @@ function renderAI(ai) {
 }
 
 // ========== FLUFF FEEDBACK ==========
+function repeatedFeedback(i, action) {
+  const rf = _qualityView?.q?.article_identity?.repeated_facts?.[i];
+  const row = document.getElementById('rf_' + i);
+  if (!rf || !row) return;
+  sendFeedback({ quote: rf.fact, tests_failed: FEEDBACK_REPEATED, verdict: action === 'confirm' ? 'YES repeated' : 'NO not repeated', action });
+  rf._dismissed = action === 'dismiss';
+  const actions = row.querySelector('.rf-actions');
+  if (rf._dismissed) {
+    row.style.opacity = '0.4';
+    row.querySelector('.rf-fact').style.textDecoration = 'line-through';
+    actions.innerHTML = `<span class="rf-verdict">${esc(t('fluff_dismissed'))}</span>`;
+  } else {
+    actions.innerHTML = `<span class="rf-verdict confirmed">${esc(t('fluff_confirmed'))}</span>`;
+  }
+  refreshQualityCounts();
+}
+
 function fluffFeedback(fid, action) {
   const row = document.getElementById(fid);
   if (!row) return;
-  const articleUrl = document.getElementById('resultUrl')?.textContent || '';
-  let domain = '';
-  try { domain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : ''; } catch(e) {}
   // Read quote and tests from data attributes (base64-encoded to avoid escaping issues)
   let decodedQuote = '', decodedTests = '';
   try { decodedQuote = decodeURIComponent(escape(atob(row.dataset.quote || ''))); } catch(e) {}
   try { decodedTests = decodeURIComponent(escape(atob(row.dataset.tests || ''))); } catch(e) {}
-  const reviewer = document.getElementById('reviewerSelect')?.value || '';
-  const verdict = action === 'confirm' ? 'YES fluff' : 'NO not fluff';
-
-  // Save to localStorage as fallback
-  try {
-    const key = 'media_dashboard_fluff_feedback';
-    const existing = JSON.parse(localStorage.getItem(key) || '[]');
-    existing.push({ url: articleUrl, domain, quote: decodedQuote, tests_failed: decodedTests, action, reviewer, ts: Date.now() });
-    if (existing.length > 1000) existing.splice(0, existing.length - 1000);
-    localStorage.setItem(key, JSON.stringify(existing));
-  } catch(e) {}
-
-  // POST to GAS proxy → Google Sheet (fire-and-forget)
-  try {
-    const proxy = getGasProxy();
-    if (proxy) fetch(proxy, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'feedback', url: articleUrl, domain, quote: decodedQuote, tests_failed: decodedTests, verdict, reviewer, _pw: getAccessCode() }),
-      redirect: 'follow'
-    }).catch(() => {});
-  } catch(e) {}
+  sendFeedback({ quote: decodedQuote, tests_failed: decodedTests, verdict: action === 'confirm' ? 'YES fluff' : 'NO not fluff', action });
+  const item = _qualityView?.fluff?.[Number(row.dataset.fluffIdx)];
+  if (item) { item._dismissed = action === 'dismiss'; refreshQualityCounts(); }
 
   if (action === 'dismiss') {
     row.classList.add('dismissed');
