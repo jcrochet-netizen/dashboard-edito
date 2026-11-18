@@ -549,6 +549,8 @@ body {
 .img-tips ul { margin: 6px 0 0 18px; }
 .img-tips li { margin-bottom: 4px; }
 .ok-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--green); background: rgba(16,185,129,0.12); border-radius: 999px; padding: 2px 9px; margin: 0 6px 6px 0; white-space: nowrap; }
+.bad-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--red); background: rgba(239,68,68,0.12); border-radius: 999px; padding: 2px 9px; margin: 0 6px 2px 0; }
+.bad-chip.warning { color: var(--amber); background: rgba(245,158,11,0.14); }
 .check-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .summary-pending { font-size: 12px; color: var(--text-dim); padding: 8px 0 4px; }
 .img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
@@ -1597,6 +1599,8 @@ const T = {
     summary_pending: "Still running: {what}. Their points will be added here.",
     img_text_pct: "{pct}% text",
     img_basics_label: "Technical checks",
+    title_ok_label: "Checks passed",
+    img_ai_ok_label: "Visual checks",
     kpi_words: "Words",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -2063,6 +2067,8 @@ const T = {
     summary_pending: "En cours : {what}. Leurs points s'ajouteront ici.",
     img_text_pct: "{pct} % de texte",
     img_basics_label: "Critères techniques",
+    title_ok_label: "Critères validés",
+    img_ai_ok_label: "Critères visuels",
     kpi_words: "Mots",
     kpi_links: "Liens",
     kpi_h2: "H2",
@@ -2521,6 +2527,8 @@ const T = {
     summary_pending: "Em andamento: {what}. Os pontos serão adicionados aqui.",
     img_text_pct: "{pct}% de texto",
     img_basics_label: "Critérios técnicos",
+    title_ok_label: "Critérios validados",
+    img_ai_ok_label: "Critérios visuais",
     kpi_words: "Palavras",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -2980,6 +2988,8 @@ const T = {
     summary_pending: "En curso: {what}. Sus puntos se añadirán aquí.",
     img_text_pct: "{pct} % de texto",
     img_basics_label: "Criterios técnicos",
+    title_ok_label: "Criterios validados",
+    img_ai_ok_label: "Criterios visuales",
     kpi_words: "Palabras",
     kpi_links: "Enlaces",
     kpi_h2: "H2",
@@ -4280,7 +4290,7 @@ function imageDiscoverScore(rep) {
 }
 
 function imageAiChecks(ai) {
-  const row = (label, status, value, comment) => ({ label, status, detail: value + (status !== 'ok' && comment ? ' — ' + comment : '') });
+  const row = (label, status, value, comment) => ({ label, status, value, why: status !== 'ok' ? comment || '' : '', detail: value + (status !== 'ok' && comment ? ' — ' + comment : '') });
   const emo = ai.emotion?.level, fr = ai.people?.framing, bg = ai.background?.status, sh = ai.sharpness?.status, ov = ai.text_overlay?.kind;
   return [
     row(t('img_emotion_label'), { strong: 'ok', moderate: 'warning' }[emo] || 'fail', t('img_emotion_' + (emo || 'none')), ai.emotion?.comment),
@@ -4292,19 +4302,36 @@ function imageAiChecks(ai) {
   ];
 }
 
-function checkRowsHtml(checks) {
-  return checks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
+// One row per problem: a red label (amber for a point to improve) with the value, the explanation below.
+// Grey rows (unknown, bonus absent) keep a plain value.
+function problemRowsHtml(rows) {
+  return rows.map(r => {
+    const value = r.status === 'fail' || r.status === 'warning'
+      ? `<span class="bad-chip${r.status === 'warning' ? ' warning' : ''}">✗ ${esc(r.value)}</span>`
+      : esc(r.value);
+    return `<div class="check-row"><div class="status-dot ${r.status}"></div><div class="check-label">${esc(r.label)}</div><div class="check-detail">${value}${r.why ? `<div class="check-why">${esc(r.why)}</div>` : ''}</div></div>`;
+  }).join('');
 }
 
-// Technical checks of the image: the green ones share a single line of green labels,
-// each one that isn't green gets its own line below with its explanation
-function technicalRowsHtml(checks) {
-  const ok = checks.filter(c => c.status === 'ok');
-  const others = checks.filter(c => c.status !== 'ok');
+// The green rows share a single line of green labels (chipText: what each label shows,
+// the rest goes in its tooltip); each row that isn't green gets its own line below
+function chipRowsHtml(rows, okLabel, chipText) {
+  const ok = rows.filter(r => r.status === 'ok');
   const okRow = ok.length
-    ? `<div class="check-row"><div class="status-dot ok"></div><div class="check-label">${esc(t('img_basics_label'))}</div><div class="check-detail">${ok.map(c => `<span class="ok-chip" title="${esc(c.label)}">✓ ${esc(c.detail)}</span>`).join('')}</div></div>`
+    ? `<div class="check-row"><div class="status-dot ok"></div><div class="check-label">${esc(okLabel)}</div><div class="check-detail">${ok.map(r => `<span class="ok-chip" title="${esc(r.label + ' : ' + r.value)}">✓ ${esc(chipText(r))}</span>`).join('')}</div></div>`
     : '';
-  return okRow + checkRowsHtml(others);
+  return okRow + problemRowsHtml(rows.filter(r => r.status !== 'ok'));
+}
+
+// Technical checks: green labels show the measured value. The other rows' text reads
+// "value — explanation" in every language, split here into the label and the line below it
+function technicalRowsHtml(checks) {
+  const rows = checks.map(c => {
+    const [value, ...rest] = c.detail.split(' — ');
+    const why = rest.join(' — ');
+    return { ...c, value: rest.length ? value : c.detail, why: why ? why.charAt(0).toUpperCase() + why.slice(1) : '' };
+  });
+  return chipRowsHtml(rows, t('img_basics_label'), r => r.value);
 }
 
 // showPreview: false in the article analysis, where the link to the image is enough
@@ -4354,7 +4381,7 @@ function renderImageReport(el, rep, countEl, showPreview = true) {
   } else {
     const why = verdict.status !== 'ok' && rep.ai.summary ? ' — ' + esc(rep.ai.summary) : '';
     html += `<div class="check-row"><div class="status-dot ${verdict.status}"></div><div class="check-label">${esc(t('img_ai_score'))}</div><div class="check-detail"><strong>${verdict.score}/100</strong>${why}</div></div>`;
-    html += checkRowsHtml(aiChecks);
+    html += chipRowsHtml(aiChecks, t('img_ai_ok_label'), r => r.label);
   }
   html += `</div>`;
   el.innerHTML = html;
@@ -7665,9 +7692,13 @@ function titleChecks(title, rep) {
   return rows;
 }
 
-// A green row needs no explanation; anything else says why
+// Length and keyword keep their own row (the count and the detected keyword are the information).
+// The other green rows become green labels on one line; each problem gets its own row with the explanation
+const TITLE_DATA_ROWS = 2;
 function verdictRowsHtml(rows) {
-  return rows.map(r => `<div class="check-row"><div class="status-dot ${r.status}"></div><div class="check-label">${esc(r.label)}</div><div class="check-detail">${esc(r.value)}${r.status !== 'ok' && r.why ? `<div class="check-why">${esc(r.why)}</div>` : ''}</div></div>`).join('');
+  const data = rows.slice(0, TITLE_DATA_ROWS), verdicts = rows.slice(TITLE_DATA_ROWS);
+  return problemRowsHtml(data.map(r => ({ ...r, why: r.status === 'ok' ? '' : r.why })))
+    + chipRowsHtml(verdicts, t('title_ok_label'), r => r.label);
 }
 
 function titleSummaryItems(title, rep) {
