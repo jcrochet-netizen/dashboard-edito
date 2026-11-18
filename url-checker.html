@@ -1602,6 +1602,7 @@ const T = {
     kpi_h2: "H2",
     kpi_discover_ai: "Discover Score AI",
     kpi_seo: "SEO Readability",
+    kpi_search_potential: "Search potential",
     // Discover checks
     mip_label: "max-image-preview:large",
     mip_ok: "Directive present. Google can show a large image in Discover.",
@@ -2067,6 +2068,7 @@ const T = {
     kpi_h2: "H2",
     kpi_discover_ai: "Score Discover IA",
     kpi_seo: "Lisibilité SEO",
+    kpi_search_potential: "Potentiel Search",
     mip_label: "max-image-preview:large",
     mip_ok: "Directive présente. Google peut afficher une grande image dans Discover.",
     mip_fail: "Directive absente. BLOQUANT : sans elle, pas de grande image dans Discover.",
@@ -2524,6 +2526,7 @@ const T = {
     kpi_h2: "H2",
     kpi_discover_ai: "Score Discover IA",
     kpi_seo: "Legibilidade SEO",
+    kpi_search_potential: "Potencial no Search",
     mip_label: "max-image-preview:large",
     mip_ok: "Diretiva presente. Google pode exibir imagem grande no Discover.",
     mip_fail: "Diretiva ausente. BLOQUEANTE: sem ela, sem imagem grande no Discover.",
@@ -2982,6 +2985,7 @@ const T = {
     kpi_h2: "H2",
     kpi_discover_ai: "Score Discover IA",
     kpi_seo: "Legibilidad SEO",
+    kpi_search_potential: "Potencial en Search",
     mip_label: "max-image-preview:large",
     mip_ok: "Directiva presente. Google puede mostrar una imagen grande en Discover.",
     mip_fail: "Directiva ausente. BLOQUEANTE: sin ella, no habrá imagen grande en Discover.",
@@ -7367,9 +7371,10 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
     const level = computeDiscoverChances(discoverAuthority).level;
     kpis.push({ label: t('kpi_chances'), value: t('chance_' + level), color: { high: 'green', medium: 'amber', low: 'red' }[level] });
   }
-  if (aiResult) {
-    if (aiResult.search?.score_lisibilite_mot_cle != null)
-      kpis.push({ label: t('kpi_seo'), value: aiResult.search.score_lisibilite_mot_cle + '/100', color: aiResult.search.score_lisibilite_mot_cle>=60?'green':aiResult.search.score_lisibilite_mot_cle>=30?'amber':'red' });
+  // Search potential from the site's own GSC data (replaces GPT's free 0-100 SEO readability score)
+  if (searchAuthority) {
+    const level = computeSearchPotential(searchAuthority).level;
+    kpis.push({ label: t('kpi_search_potential'), value: t('search_' + level), color: { high: 'green', medium: 'amber', low: 'red' }[level] });
   }
   if (spellResult) {
     const errCount = spellResult.errors?.length || 0;
