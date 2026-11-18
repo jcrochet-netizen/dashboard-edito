@@ -6131,9 +6131,9 @@ async function runQualityCheck(title, bodyText, articleUrl) {
     calibration = buildCalibrationBlock(feedback, currentDomain);
   } catch(e) {}
 
-  let data;
-  try {
-    data = await callOpenAI({
+  // GPT does not judge borderline sentences the same way twice (same article: 0, 2 then 3 fluff items).
+  // Three passes with fixed seeds run in parallel, and only what at least two of them flag is kept
+  const request = seed => ({
       model: OPENAI_MODEL,
       messages: [
         { role: 'system', content: `You are a Google Search quality rater. Your ONLY job is to flag content that would directly damage the article in a Google Discover update, Search update, or spam update. You are NOT an editorial coach. Standard sports journalism writing is fine — even if it is not perfect prose.
@@ -6144,7 +6144,7 @@ Before evaluating anything, read the TITLE carefully and determine:
 - article_type: What kind of article is it? One of: match-report, preview, transfer-news, rankings/list, roundup/compilation, analysis, interview, player-profile, opinion, news, other.
 - key_facts: List the 3-5 most important specific facts in the article (numbers, scores, names+actions, stats). You will use these to check for cross-paragraph repetition.
 
-ALL your evaluation (title alignment, fluff detection, repetition) must be through the lens of this identified topic. If the title says "biggest attendances" and the article mentions Portugal vs Norway, the article topic is attendances — Portugal vs Norway is just one data point.
+ALL your evaluation (fluff detection, repetition) must be through the lens of this identified topic. If the title says "biggest attendances" and the article mentions Portugal vs Norway, the article topic is attendances — Portugal vs Norway is just one data point.
 
 STEP 2 — CROSS-PARAGRAPH FACT REPETITION:
 After identifying key_facts, scan the article for the same specific fact (same number, same stat, same score, same name+action) appearing in 2+ SEPARATE paragraphs.
@@ -6185,13 +6185,8 @@ THRESHOLD: Flag a sentence ONLY if a Google quality rater would specifically hig
 
 You must:
 1. Identify the ARTICLE IDENTITY first (Step 1 above). This determines how you interpret everything.
-2. Check if the title accurately reflects the chapô and article content — evaluated against the article_topic you identified, not against one sub-event. Rate as "aligned", "partial", or "misaligned".
-3. Check TITLE BALANCE:
-   - "clickbait": Title overpromises or uses sensational language but the article is ordinary.
-   - "bland": Title is flat and generic, gives no reason to click.
-   - "balanced": Title triggers curiosity while honestly reflecting the article content.
-4. Detect CROSS-PARAGRAPH FACT REPETITION (Step 2 above) — same data restated across paragraphs.
-5. Detect DAMAGING PADDING only — content that would hurt Google ranking.
+2. Detect CROSS-PARAGRAPH FACT REPETITION (Step 2 above) — same data restated across paragraphs.
+3. Detect DAMAGING PADDING only — content that would hurt Google ranking.
 
 SEVERITY (use only "high" or "medium" — there is no "low"):
 - "high": Would directly trigger Google spam signals or make Google classify the article as auto-generated. Examples: blatant filler paragraphs with zero information, word-for-word repetition of the same point, same specific fact/number stated in 3+ locations, template sentences.
@@ -6225,22 +6220,6 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
                   repeated_facts: { type: 'array', items: { type: 'object', properties: { fact: { type: 'string', description: 'The specific fact/number that is repeated with NO new information added' }, locations: { type: 'integer', description: 'Number of separate locations where this fact appears with no added value (excluding chapô)' }, positions: { type: 'array', items: { type: 'string' }, description: 'Specific paragraph numbers where each redundant occurrence appears, e.g. ["§3", "§7"]. Count from 1 after chapô. One entry per occurrence.' } }, required: ['fact', 'locations', 'positions'] }, description: 'Facts restated in 2+ paragraphs with NO new context or details added (pure redundancy). Do NOT include facts that reappear with added analysis, quotes, or new information — that is normal writing. Empty array if no true redundancy found.' }
                 }, required: ['topic', 'type', 'key_facts', 'repeated_facts']
               },
-              title_alignment: {
-                type: 'object',
-                properties: {
-                  status: { type: 'string', enum: ['aligned', 'partial', 'misaligned'] },
-                  comment: { type: 'string' }
-                }, required: ['status', 'comment']
-              },
-              title_balance: {
-                type: 'object',
-                description: 'Whether the title strikes the right balance between clickbait and bland',
-                properties: {
-                  status: { type: 'string', enum: ['clickbait', 'bland', 'balanced'] },
-                  comment: { type: 'string', description: 'Why the title is clickbait, bland, or balanced' },
-                  suggestion: { type: 'string', description: 'If not balanced: a better title suggestion in the article language. Empty if already balanced.' }
-                }, required: ['status', 'comment', 'suggestion']
-              },
               fluff: {
                 type: 'array',
                 items: {
@@ -6255,17 +6234,50 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
                   }, required: ['quote', 'category', 'severity', 'tests_failed', 'reason', 'suggestion']
                 }
               }
-            }, required: ['article_identity', 'title_alignment', 'title_balance', 'fluff']
+            }, required: ['article_identity', 'fluff']
           }
         }
       }],
       tool_choice: { type: 'function', function: { name: 'quality_report' } },
-      temperature: 0.1
+      temperature: 0.3,
+      seed
+  });
+  const settled = await Promise.allSettled([11, 22, 33].map(seed => callOpenAI(request(seed))));
+  const passes = settled.map(r => {
+    if (r.status !== 'fulfilled') return null;
+    const tc = r.value.choices?.[0]?.message?.tool_calls?.[0];
+    try { return tc ? JSON.parse(tc.function.arguments) : null; } catch(e) { return null; }
+  }).filter(Boolean);
+  return passes.length ? mergeQualityPasses(passes) : null;
+}
+
+// Same sentence seen by two passes: identical once normalised, one inside the other, or mostly the same words
+function sameQuote(a, b) {
+  const norm = x => (x || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const na = norm(a), nb = norm(b);
+  if (!na || !nb) return false;
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+  const wa = new Set(na.split(' ')), wb = new Set(nb.split(' '));
+  const common = [...wa].filter(w => wb.has(w)).length;
+  return common / Math.max(wa.size, wb.size) >= 0.6;
+}
+
+// Keeps fluff items and repeated facts reported by at least 2 passes (all of them when only 1 pass answered)
+function mergeQualityPasses(passes) {
+  const needed = passes.length >= 2 ? 2 : 1;
+  const vote = (lists, text) => {
+    const kept = [];
+    lists[0].concat(...lists.slice(1)).forEach(item => {
+      if (kept.some(k => sameQuote(text(k), text(item)))) return;
+      const votes = lists.filter(list => list.some(other => sameQuote(text(other), text(item)))).length;
+      if (votes >= needed) kept.push(item);
     });
-  } catch(e) { return null; }
-  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!tc) return null;
-  try { return JSON.parse(tc.function.arguments); } catch(e) { return null; }
+    return kept;
+  };
+  const base = passes[0];
+  const identity = { ...(base.article_identity || {}) };
+  identity.repeated_facts = vote(passes.map(p => p.article_identity?.repeated_facts || []), f => f.fact);
+  return { ...base, article_identity: identity, fluff: vote(passes.map(p => p.fluff || []), f => f.quote) };
 }
 
 // ========== DISCOVER AUTHORITY ==========
