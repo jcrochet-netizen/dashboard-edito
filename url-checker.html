@@ -616,6 +616,13 @@ body {
 .summary-list li { font-size: 13px; color: var(--text); padding: 6px 0 6px 18px; border-bottom: 1px solid var(--surface-2); line-height: 1.45; }
 .summary-list li:last-child { border-bottom: none; }
 .summary-section { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted); background: var(--surface-2); border-radius: 3px; padding: 1px 6px; margin-right: 6px; }
+.summary-link { cursor: pointer; }
+.summary-link:hover { background: var(--surface-2); }
+.summary-jump { font-size: 12px; font-weight: 600; color: var(--accent); margin-left: 8px; white-space: nowrap; }
+.kpi-link { cursor: pointer; transition: border-color 0.15s; }
+.kpi-link:hover, .kpi-link:focus-visible { border-color: var(--accent); outline: none; }
+@keyframes jumpFlash { from { background: var(--accent-glow, rgba(99,102,241,0.18)); } to { background: transparent; } }
+.jump-flash { animation: jumpFlash 1.8s ease-out; border-radius: var(--radius-sm); }
 .summary-none { font-size: 13px; padding: 12px 0; display: flex; align-items: center; gap: 8px; }
 
 /* AI SECTION */
@@ -1251,6 +1258,12 @@ body {
   </div>
 
   <div class="results" id="results">
+    <div class="result-header">
+      <div>
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-url" id="resultUrl"></div>
+      </div>
+    </div>
     <div class="kpi-row" id="kpiRow"></div>
     <div class="card summary-card" id="summaryCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
@@ -1258,12 +1271,6 @@ body {
         <span class="chevron">▼</span>
       </div>
       <div class="card-body" id="summaryBody"></div>
-    </div>
-    <div class="result-header">
-      <div>
-        <div class="result-title" id="resultTitle"></div>
-        <div class="result-url" id="resultUrl"></div>
-      </div>
     </div>
     <div class="export-bar" id="exportBar">
       <button class="export-btn" onclick="exportAll('csv')" title="Export all as CSV">📥 <span data-t="export_all">Export all</span> (CSV)</button>
@@ -1527,6 +1534,7 @@ const T = {
     summary_fluff_medium: "{n} filler passage(s) to tighten",
     summary_repeated: "{n} fact(s) repeated without new information",
     summary_spell: "{n} spelling or grammar mistake(s)",
+    jump_see: "See",
     summary_sec_discover: "Discover",
     summary_sec_title: "Title",
     summary_sec_image: "Image",
@@ -1549,6 +1557,7 @@ const T = {
     title_kw_end: "at the end of the title",
     title_kw_absent: "missing from the title",
     title_kw_missing: "Missing names: {list}.",
+    title_teasing: "teasing, name withheld on purpose",
     title_num_label: "Figure",
     title_num_yes: "Present",
     title_num_no: "None (possible bonus)",
@@ -1567,7 +1576,6 @@ const T = {
     title_angle_both: "Discover + Search",
     title_pending: "Analysing the title...",
     summary_pending: "Still running: {what}. Their points will be added here.",
-    summary_suggestion: "Advice: {text}",
     img_text_pct: "{pct}% of the image",
     kpi_words: "Words",
     kpi_links: "Links",
@@ -1944,6 +1952,7 @@ const T = {
     summary_fluff_medium: "{n} passage(s) de remplissage à resserrer",
     summary_repeated: "{n} fait(s) répété(s) sans information nouvelle",
     summary_spell: "{n} faute(s) d'orthographe ou de grammaire",
+    jump_see: "Voir",
     summary_sec_discover: "Discover",
     summary_sec_title: "Titre",
     summary_sec_image: "Image",
@@ -1966,6 +1975,7 @@ const T = {
     title_kw_end: "en fin de titre",
     title_kw_absent: "absent du titre",
     title_kw_missing: "Noms absents : {list}.",
+    title_teasing: "teasing : nom volontairement caché",
     title_num_label: "Chiffre",
     title_num_yes: "Présent",
     title_num_no: "Aucun (bonus possible)",
@@ -1984,7 +1994,6 @@ const T = {
     title_angle_both: "Discover + Search",
     title_pending: "Analyse du titre en cours...",
     summary_pending: "En cours : {what}. Leurs points s'ajouteront ici.",
-    summary_suggestion: "Conseil : {text}",
     img_text_pct: "{pct} % de l'image",
     kpi_words: "Mots",
     kpi_links: "Liens",
@@ -2353,6 +2362,7 @@ const T = {
     summary_fluff_medium: "{n} trecho(s) de enchimento para enxugar",
     summary_repeated: "{n} fato(s) repetido(s) sem informação nova",
     summary_spell: "{n} erro(s) de ortografia ou gramática",
+    jump_see: "Ver",
     summary_sec_discover: "Discover",
     summary_sec_title: "Título",
     summary_sec_image: "Imagem",
@@ -2375,6 +2385,7 @@ const T = {
     title_kw_end: "no fim do título",
     title_kw_absent: "ausente do título",
     title_kw_missing: "Nomes ausentes: {list}.",
+    title_teasing: "teasing: nome omitido de propósito",
     title_num_label: "Número",
     title_num_yes: "Presente",
     title_num_no: "Nenhum (bônus possível)",
@@ -2393,7 +2404,6 @@ const T = {
     title_angle_both: "Discover + Search",
     title_pending: "Analisando o título...",
     summary_pending: "Em andamento: {what}. Os pontos serão adicionados aqui.",
-    summary_suggestion: "Conselho: {text}",
     img_text_pct: "{pct}% da imagem",
     kpi_words: "Palavras",
     kpi_links: "Links",
@@ -2763,6 +2773,7 @@ const T = {
     summary_fluff_medium: "{n} pasaje(s) de relleno que ajustar",
     summary_repeated: "{n} dato(s) repetido(s) sin información nueva",
     summary_spell: "{n} error(es) de ortografía o gramática",
+    jump_see: "Ver",
     summary_sec_discover: "Discover",
     summary_sec_title: "Título",
     summary_sec_image: "Imagen",
@@ -2785,6 +2796,7 @@ const T = {
     title_kw_end: "al final del título",
     title_kw_absent: "ausente del título",
     title_kw_missing: "Nombres ausentes: {list}.",
+    title_teasing: "teasing: nombre omitido a propósito",
     title_num_label: "Cifra",
     title_num_yes: "Presente",
     title_num_no: "Ninguna (bonus posible)",
@@ -2803,7 +2815,6 @@ const T = {
     title_angle_both: "Discover + Search",
     title_pending: "Analizando el título...",
     summary_pending: "En curso: {what}. Sus puntos se añadirán aquí.",
-    summary_suggestion: "Consejo: {text}",
     img_text_pct: "{pct} % de la imagen",
     kpi_words: "Palabras",
     kpi_links: "Enlaces",
@@ -3514,6 +3525,18 @@ function switchMode(mode) {
 // ========== UI HELPERS ==========
 function toggleCard(header) { header.classList.toggle('collapsed'); }
 
+// Scrolls to a part of the results (opening its card if collapsed); for spelling, lands on the first error
+function jumpToSection(id) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.closest('.card')?.querySelector('.card-header.collapsed')?.classList.remove('collapsed');
+  const el = target.querySelector('.spell-error-row') || target;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.remove('jump-flash');
+  void el.offsetWidth; // restart the highlight when clicked twice
+  el.classList.add('jump-flash');
+}
+
 function setProgress(pct, label) {
   document.getElementById('progressBar').classList.add('active');
   document.getElementById('progressFill').style.width = pct + '%';
@@ -3883,7 +3906,7 @@ async function runImageAI(imageUrl) {
   const data = await callOpenAI({
     model: OPENAI_MODEL,
     messages: [
-      { role: 'system', content: `You are the photo editor of a network of sports news sites, and a demanding one. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject that stands out from a clean background, and penalises crowded scenes, logos, watermarks and text written on the image. The background matters: giant lettering, logo walls, sponsor boards or busy patterns behind the subject compete with it, even when that text belongs to the scene. The page computes the score from your categories, so any problem you would fix with high impact must show in a category, not only in the suggestions. Answer ONLY through the image_report tool. Write every comment, the summary and the suggestions in ${langName}.` },
+      { role: 'system', content: `You are the photo editor of a network of sports news sites, and a demanding one. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject that stands out from a clean background, and penalises crowded scenes, logos, watermarks and text written on the image. The background matters: giant lettering, logo walls, sponsor boards or busy patterns behind the subject compete with it, even when that text belongs to the scene. The page computes the score from your categories, so every problem must show in a category. Answer ONLY through the image_report tool. Write every comment and the summary in ${langName}.` },
       { role: 'user', content: [
         { type: 'text', text: 'Review this lead image for Google Discover.' },
         { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } }
@@ -3916,12 +3939,9 @@ async function runImageAI(imageUrl) {
             crop_16_9: { type: 'object', properties: {
               safe: { type: 'boolean', description: 'The main subject (faces included) stays whole in a centred 16:9 crop' },
               comment: { type: 'string' } }, required: ['safe', 'comment'] },
-            summary: { type: 'string', description: 'One or two sentences' },
-            suggestions: { type: 'array', description: 'Up to 3 concrete improvements, most important first, empty if none', items: { type: 'object', properties: {
-              text: { type: 'string' },
-              impact: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Expected effect on Discover taps' } }, required: ['text', 'impact'] } }
+            summary: { type: 'string', description: 'One or two sentences' }
           },
-          required: ['emotion', 'people', 'background', 'sharpness', 'text_overlay', 'crop_16_9', 'summary', 'suggestions']
+          required: ['emotion', 'people', 'background', 'sharpness', 'text_overlay', 'crop_16_9', 'summary']
         }
       }
     }],
@@ -5744,6 +5764,8 @@ On te donne le titre, l'URL et le texte d'un article. Analyse-le selon deux axes
 
 3. ENTITÉS PRINCIPALES : 1 à 3 entités nommées PRÉCISES (noms propres). Jamais un mot générique.
 
+Le réseau pratique le teasing : ne pas nommer dans le titre le joueur ciblé par un club est un choix éditorial. Ne le signale jamais comme un point faible et ne propose aucun titre qui révèle ce nom.
+
 4. LECTURE ÉDITORIALE : 2 critères (statut "ok"/"warning"/"fail" + commentaire) :
    - titre_coherent : le titre ne promet pas plus que l'article livre
    - sourcing_present : au moins une source identifiable` + langInstruction;
@@ -6969,13 +6991,17 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   }
   if (spellResult) {
     const errCount = spellResult.errors?.length || 0;
-    kpis.push({ label: t('kpi_spell'), value: errCount, color: errCount===0?'green':errCount<=3?'amber':'red' });
+    kpis.push({ label: t('kpi_spell'), value: errCount, color: errCount===0?'green':errCount<=3?'amber':'red', target: errCount ? 'spellBody' : null });
   }
   if (qualityResult) {
     const qIssues = (qualityResult.fluff || []).filter(f => f.severity === 'high' || f.severity === 'medium').length + (qualityResult.article_identity?.repeated_facts?.length || 0);
     kpis.push({ label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red' });
   }
-  document.getElementById('kpiRow').innerHTML = kpis.map(k => `<div class="kpi-card"><div class="kpi-value ${k.color}"><span class="tl-dot ${k.color}"></span>${k.value}</div><div class="kpi-label">${k.label}</div></div>`).join('');
+  // target: id of the section the card scrolls to (fixed ids from this file, safe in the attribute)
+  document.getElementById('kpiRow').innerHTML = kpis.map(k => {
+    const link = k.target ? ` kpi-link" role="button" tabindex="0" title="${t('jump_see')}" onclick="jumpToSection('${k.target}')" onkeydown="if(event.key==='Enter')jumpToSection('${k.target}')` : '';
+    return `<div class="kpi-card${link}"><div class="kpi-value ${k.color}"><span class="tl-dot ${k.color}"></span>${k.value}</div><div class="kpi-label">${k.label}</div></div>`;
+  }).join('');
 
   const discoverColor = discoverOk===discoverTotal?'green':discoverOk>=discoverTotal-2?'amber':'red';
   document.getElementById('discoverCount').innerHTML = `<span class="tl-dot ${discoverColor}" style="width:8px;height:8px"></span> ${t('criteria_count', { ok: discoverOk, n: discoverTotal })}`;
@@ -7091,7 +7117,7 @@ function buildSummaryItems(discoverChecks, contentChecks, q, ai, spellResult) {
     if (med) items.push({ level: 'improve', sec: 'quality', text: t('summary_fluff_medium', { n: med }) });
     if (repeated) items.push({ level: 'improve', sec: 'quality', text: t('summary_repeated', { n: repeated }) });
   }
-  if (spellResult?.errors?.length) items.push({ level: 'improve', sec: 'spell', text: t('summary_spell', { n: spellResult.errors.length }) });
+  if (spellResult?.errors?.length) items.push({ level: 'improve', sec: 'spell', target: 'spellBody', text: t('summary_spell', { n: spellResult.errors.length }) });
   const src = ai?.lecture_editoriale?.sourcing_present;
   if (src && src.statut !== 'ok') items.push({ level: src.statut === 'fail' ? 'fix' : 'improve', sec: 'editorial', text: t('ai_sourcing') + ' — ' + (src.commentaire || '') });
   // Free-text weaknesses from the AI Discover review, capped to keep the summary short
@@ -7104,20 +7130,15 @@ function imageSummaryItems(rep) {
   if (rep.loadError) return [{ level: 'improve', sec: 'image', text: t('img_load_error') }];
   const hasAi = rep.ai && !rep.ai.error;
   const tag = hasAi ? imageDiscoverScore(rep).score + '/100' : '';
-  const items = summaryFromChecks('image', imageChecks(rep).concat(hasAi ? imageAiChecks(rep.ai) : []), tag);
-  // The photo editor's advice lives here rather than in the image card: what to change, high impact first
-  if (hasAi) (rep.ai.suggestions || []).filter(x => x && (x.text || typeof x === 'string')).forEach(x => {
-    const text = typeof x === 'string' ? x : x.text;
-    items.push({ level: x.impact === 'high' ? 'fix' : 'improve', sec: 'image', tag, text: t('summary_suggestion', { text }) });
-  });
-  return items;
+  // Problems only: advice such as "blur the background" repeated the flagged rows ("Background: distracting")
+  return summaryFromChecks('image', imageChecks(rep).concat(hasAi ? imageAiChecks(rep.ai) : []), tag);
 }
 
 function renderSummary(items, pending) {
   document.getElementById('summaryCard').style.display = 'block';
   const sorted = items.slice().sort((x, y) => SUMMARY_ORDER[x.sec] - SUMMARY_ORDER[y.sec]);
   const fix = sorted.filter(i => i.level === 'fix'), improve = sorted.filter(i => i.level === 'improve');
-  const list = arr => `<ul class="summary-list">${arr.map(i => `<li><span class="summary-section">${esc(t('summary_sec_' + i.sec) + (i.tag ? ' ' + i.tag : ''))}</span>${esc(i.text)}</li>`).join('')}</ul>`;
+  const list = arr => `<ul class="summary-list">${arr.map(i => `<li${i.target ? ` class="summary-link" onclick="jumpToSection('${i.target}')"` : ''}><span class="summary-section">${esc(t('summary_sec_' + i.sec) + (i.tag ? ' ' + i.tag : ''))}</span>${esc(i.text)}${i.target ? `<span class="summary-jump">↓ ${t('jump_see')}</span>` : ''}</li>`).join('')}</ul>`;
   let html = '';
   if (fix.length) html += `<div class="summary-group"><h4><span class="tl-dot red"></span> ${t('summary_fix')} (${fix.length})</h4>${list(fix)}</div>`;
   if (improve.length) html += `<div class="summary-group"><h4><span class="tl-dot amber"></span> ${t('summary_improve')} (${improve.length})</h4>${list(improve)}</div>`;
@@ -7145,8 +7166,13 @@ async function runTitleAnalysis(title, bodyText) {
 
 How Google treats headlines:
 - Search: the main query (who + what: player, club, competition, transfer, injury...) must appear, ideally in the first words. Google shows about 60-65 characters, so the key information comes first. One clear subject, no keyword stuffing.
-- Discover: readers scroll, there is no query. A headline earns the tap with a precise, concrete promise: named people or clubs, a striking figure (fee, age, stat, date, ranking), a vivid or emotional word (blow, relief, anger, record, surprise...), a clear stake. Google's Discover guidelines ban clickbait: no withheld key information ("you won't believe...", "this player..."), no exaggeration, no promise the article does not keep, no all caps or sensational punctuation.
+- Discover: readers scroll, there is no query. A headline earns the tap with a precise, concrete promise: named people or clubs, a striking figure (fee, age, stat, date, ranking), a vivid or emotional word (blow, relief, anger, record, surprise...), a clear stake. Google's Discover guidelines ban clickbait: no exaggeration, no promise the article does not keep, no all caps or sensational punctuation.
 - Figures and emotion are a plus, never mandatory: do not force them when the article has none.
+
+Teasing is this network's editorial line: headlines often withhold the name of the player a club is targeting ("une autre cible en défense", "un crack de Premier League", "ce milieu"). When the original headline does that:
+- it is a deliberate choice, not a flaw: set teasing to true, never list the teased name as missing, and never call the headline imprecise, bland or clickbait because of it;
+- judge the main keyword on what the headline does name (club, competition, position, transfer window), not on the teased player;
+- keep the teasing in every suggested headline: never reveal the teased name.
 
 Your review:
 - keywords: the query a reader would type to find this article, where it sits in the headline, and important names from the article that are missing from it.
@@ -7174,8 +7200,9 @@ Answer only through the title_report tool. Write every comment and "why" in ${la
           keywords: { type: 'object', properties: {
             main_keyword: { type: 'string', description: 'The query a reader would type in Google to find this article, in the article language' },
             position: { type: 'string', enum: ['start', 'middle', 'end', 'absent'], description: 'Where that query (or its key name) sits in the headline; start = within the first five words' },
-            missing_entities: { type: 'array', items: { type: 'string' }, description: 'Important names from the article missing from the headline; empty if none' },
+            missing_entities: { type: 'array', items: { type: 'string' }, description: 'Important names from the article missing from the headline, never a teased player; empty if none' },
             comment }, required: ['main_keyword', 'position', 'missing_entities', 'comment'] },
+          teasing: { type: 'boolean', description: 'The headline deliberately withholds the name of a targeted player' },
           numbers: { type: 'object', properties: {
             in_title: { type: 'boolean' },
             available: { type: 'string', description: 'A striking figure from the article that could go in the headline; empty if none' },
@@ -7198,7 +7225,7 @@ Answer only through the title_report tool. Write every comment and "why" in ${la
             angle: { type: 'string', enum: ['search', 'discover', 'both'] },
             why: { type: 'string', description: 'What makes it better than the original, in one sentence' } }, required: ['title', 'angle', 'why'] } }
         },
-        required: ['keywords', 'numbers', 'emotion', 'alignment', 'balance', 'promise', 'suggestions']
+        required: ['keywords', 'teasing', 'numbers', 'emotion', 'alignment', 'balance', 'promise', 'suggestions']
       }
     }
   };
@@ -7230,9 +7257,10 @@ function titleChecks(title, rep) {
   const len = (title || '').length;
   const rows = [{ label: t('title_len_label'), status: len <= TITLE_SEARCH_MAX ? 'ok' : len <= TITLE_MAX ? 'warning' : 'fail', value: t('title_chars', { n: len }), why: len <= TITLE_SEARCH_MAX ? '' : t(len <= TITLE_MAX ? 'title_len_long' : 'title_len_too_long') }];
   if (!rep || rep === 'pending' || rep.error) return rows;
-  const k = rep.keywords || {}, missing = k.missing_entities || [];
+  // Teasing (withholding the targeted player's name) is the network's editorial choice, never a fault
+  const k = rep.keywords || {}, missing = rep.teasing ? [] : (k.missing_entities || []);
   rows.push({ label: t('title_kw_label'), status: k.position === 'absent' ? 'fail' : (k.position === 'end' || missing.length) ? 'warning' : 'ok',
-    value: (k.main_keyword ? '"' + k.main_keyword + '" ' : '') + t('title_kw_' + (k.position || 'absent')),
+    value: (k.main_keyword ? '"' + k.main_keyword + '" ' : '') + t('title_kw_' + (k.position || 'absent')) + (rep.teasing ? ' · ' + t('title_teasing') : ''),
     why: [missing.length ? t('title_kw_missing', { list: missing.join(', ') }) : '', k.comment].filter(Boolean).join(' ') });
   const n = rep.numbers || {};
   rows.push({ label: t('title_num_label'), bonus: true, status: n.in_title ? 'ok' : 'a_verifier', value: t(n.in_title ? 'title_num_yes' : 'title_num_no'),
