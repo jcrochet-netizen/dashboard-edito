@@ -3754,7 +3754,7 @@ function findHeroImage(doc, pageUrl) {
   const candidates = [
     ['og', doc.querySelector('meta[property="og:image"]')?.getAttribute('content')],
     ['twitter', (doc.querySelector('meta[name="twitter:image"]') || doc.querySelector('meta[property="twitter:image"]'))?.getAttribute('content')],
-    ['content', doc.querySelector('article img[src], main img[src], img[src]')?.getAttribute('src')],
+    ['content', [...doc.querySelectorAll('article img[src], main img[src], img[src]')].find(img => isEditorialImage(img, doc.body))?.getAttribute('src')],
   ];
   for (const [origin, src] of candidates) {
     if (!src || !src.trim()) continue;
@@ -5330,6 +5330,24 @@ function isInsideEmbed(el, boundary) {
   return false;
 }
 
+// Only article photos count. Sites put icons inside the article body (Google News "follow us" button,
+// WhatsApp/Google Actualités logos), plus YouTube thumbnails and embeds: none of them is an editorial image
+function isEditorialImage(img, boundary) {
+  const w = parseInt(img.getAttribute('width'), 10), h = parseInt(img.getAttribute('height'), 10);
+  if ((w && w <= 100) || (h && h <= 100)) return false;
+  const src = (img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '').toLowerCase();
+  // Delimiters around logo/icon: TopMercato photos are named ICONSPORT_...
+  if (/\/(themes|plugins)\/|[\/_-](logo|icon|avatar|emoji)s?[\/_.-]|gravatar\.com|ytimg\.com/.test(src)) return false;
+  if (/\b(icon|logo|avatar|emoji|wp-smiley|yt-facade)|gnews|share|social/.test((img.getAttribute('class') || '').toLowerCase())) return false;
+  if (isInsideEmbed(img, boundary)) return false;
+  for (let n = img.parentElement; n && n !== boundary; n = n.parentElement) {
+    // <noscript> holds a second copy of lazy-loaded images
+    if (n.tagName === 'NOSCRIPT') return false;
+    if (/share|social|follow|gnews|newsletter|author/.test(((n.getAttribute('class') || '') + ' ' + (n.id || '')).toLowerCase())) return false;
+  }
+  return true;
+}
+
 function isExcluded(el, boundary, keywords) {
   let node = el.parentElement;
   while (node && node !== boundary) {
@@ -5665,7 +5683,7 @@ function runContentChecks(doc, url) {
   for (const h of body.querySelectorAll('h2')) { if (!isExcluded(h, body, EXCLUDE_KW)) coreH2.push(h); }
   checks.push({ key: 'h2_count', label: t('h2_label'), status: 'ok', detail: t('h2_detail', {n:coreH2.length}), value: coreH2.length });
 
-  const imgs = body.querySelectorAll('img');
+  const imgs = [...body.querySelectorAll('img')].filter(img => isEditorialImage(img, body));
   let imgCr = 0;
   for (const img of imgs) {
     const alt = (img.getAttribute('alt')||'').trim();
