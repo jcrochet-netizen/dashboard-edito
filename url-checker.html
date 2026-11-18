@@ -548,6 +548,7 @@ body {
 .img-tips { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
 .img-tips ul { margin: 6px 0 0 18px; }
 .img-tips li { margin-bottom: 4px; }
+.ok-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--green); background: rgba(16,185,129,0.12); border-radius: 999px; padding: 2px 9px; margin: 0 6px 6px 0; white-space: nowrap; }
 .check-why { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .summary-pending { font-size: 12px; color: var(--text-dim); padding: 8px 0 4px; }
 .img-file-label { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin: 10px 0 4px; }
@@ -1582,7 +1583,8 @@ const T = {
     title_promise_misleading: "Misleading",
     title_pending: "Analysing the title...",
     summary_pending: "Still running: {what}. Their points will be added here.",
-    img_text_pct: "{pct}% of the image",
+    img_text_pct: "{pct}% text",
+    img_basics_label: "Technical checks",
     kpi_words: "Words",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -1833,7 +1835,7 @@ const T = {
     img_weight_heavy: "{size} — heavy, slows the page down (aim for under 500 KB).",
     img_unknown: "Not available: the image file could not be downloaded.",
     img_text_label: "Text on the image",
-    img_text_none: "No text detected.",
+    img_text_none: "No text detected",
     img_text_warn: "{pct}% of the image is covered by text — keep it under 10%.",
     img_text_fail: "{pct}% of the image is covered by text — too much for Discover (over 20%).",
     img_ocr_error: "Text measurement failed: {msg}",
@@ -2023,7 +2025,8 @@ const T = {
     title_promise_misleading: "Trompeuse",
     title_pending: "Analyse du titre en cours...",
     summary_pending: "En cours : {what}. Leurs points s'ajouteront ici.",
-    img_text_pct: "{pct} % de l'image",
+    img_text_pct: "{pct} % de texte",
+    img_basics_label: "Critères techniques",
     kpi_words: "Mots",
     kpi_links: "Liens",
     kpi_h2: "H2",
@@ -2266,7 +2269,7 @@ const T = {
     img_weight_heavy: "{size} — lourd, ralentit la page (visez moins de 500 Ko).",
     img_unknown: "Indisponible : le fichier de l'image n'a pas pu être récupéré.",
     img_text_label: "Texte sur l'image",
-    img_text_none: "Aucun texte détecté.",
+    img_text_none: "Aucun texte détecté",
     img_text_warn: "{pct} % de l'image est couverte de texte — restez sous 10 %.",
     img_text_fail: "{pct} % de l'image est couverte de texte — trop pour Discover (plus de 20 %).",
     img_ocr_error: "La mesure du texte a échoué : {msg}",
@@ -2456,7 +2459,8 @@ const T = {
     title_promise_misleading: "Enganosa",
     title_pending: "Analisando o título...",
     summary_pending: "Em andamento: {what}. Os pontos serão adicionados aqui.",
-    img_text_pct: "{pct}% da imagem",
+    img_text_pct: "{pct}% de texto",
+    img_basics_label: "Critérios técnicos",
     kpi_words: "Palavras",
     kpi_links: "Links",
     kpi_h2: "H2",
@@ -2681,7 +2685,7 @@ const T = {
     img_weight_heavy: "{size} — pesada, deixa a página lenta (ideal abaixo de 500 KB).",
     img_unknown: "Indisponível: não foi possível baixar o arquivo da imagem.",
     img_text_label: "Texto na imagem",
-    img_text_none: "Nenhum texto detectado.",
+    img_text_none: "Nenhum texto detectado",
     img_text_warn: "{pct}% da imagem está coberta por texto — mantenha abaixo de 10%.",
     img_text_fail: "{pct}% da imagem está coberta por texto — demais para o Discover (acima de 20%).",
     img_ocr_error: "A medição do texto falhou: {msg}",
@@ -2890,7 +2894,8 @@ const T = {
     title_promise_misleading: "Engañosa",
     title_pending: "Analizando el título...",
     summary_pending: "En curso: {what}. Sus puntos se añadirán aquí.",
-    img_text_pct: "{pct} % de la imagen",
+    img_text_pct: "{pct} % de texto",
+    img_basics_label: "Criterios técnicos",
     kpi_words: "Palabras",
     kpi_links: "Enlaces",
     kpi_h2: "H2",
@@ -3114,7 +3119,7 @@ const T = {
     img_weight_heavy: "{size} — pesada, ralentiza la página (mejor por debajo de 500 KB).",
     img_unknown: "No disponible: no se pudo descargar el archivo de la imagen.",
     img_text_label: "Texto en la imagen",
-    img_text_none: "No se detectó texto.",
+    img_text_none: "No se detectó texto",
     img_text_warn: "El {pct} % de la imagen está cubierto por texto — mantenlo por debajo del 10 %.",
     img_text_fail: "El {pct} % de la imagen está cubierto por texto — demasiado para Discover (más del 20 %).",
     img_ocr_error: "Falló la medición del texto: {msg}",
@@ -4183,6 +4188,17 @@ function checkRowsHtml(checks) {
   return checks.map(c => `<div class="check-row"><div class="status-dot ${c.status}"></div><div class="check-label">${esc(c.label)}</div><div class="check-detail">${esc(c.detail)}</div></div>`).join('');
 }
 
+// Technical checks of the image: the green ones share a single line of green labels,
+// each one that isn't green gets its own line below with its explanation
+function technicalRowsHtml(checks) {
+  const ok = checks.filter(c => c.status === 'ok');
+  const others = checks.filter(c => c.status !== 'ok');
+  const okRow = ok.length
+    ? `<div class="check-row"><div class="status-dot ok"></div><div class="check-label">${esc(t('img_basics_label'))}</div><div class="check-detail">${ok.map(c => `<span class="ok-chip" title="${esc(c.label)}">✓ ${esc(c.detail)}</span>`).join('')}</div></div>`
+    : '';
+  return okRow + checkRowsHtml(others);
+}
+
 // showPreview: false in the article analysis, where the link to the image is enough
 function renderImageReport(el, rep, countEl, showPreview = true) {
   if (countEl) countEl.innerHTML = '';
@@ -4219,7 +4235,7 @@ function renderImageReport(el, rep, countEl, showPreview = true) {
     ${figure}
     <div class="img-checks">
       <div class="check-row"><div class="status-dot a_verifier"></div><div class="check-label">${t('img_source')}</div><div class="check-detail">${sourceDetail}</div></div>
-      ${checkRowsHtml(checks)}
+      ${technicalRowsHtml(checks)}
     </div>
   </div>`;
   if (rep.noBytes) html += `<div class="ai-unavailable" style="margin-top:12px">${t('img_no_bytes_hint')}</div>`;
