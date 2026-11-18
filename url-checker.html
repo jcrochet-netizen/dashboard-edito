@@ -608,6 +608,16 @@ body {
   .kpi-row { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* DISCOVER CHANCES */
+.chance-verdict { display: flex; align-items: center; gap: 10px; font-size: 16px; padding-top: 12px; }
+.chance-sub { font-size: 12px; color: var(--text-dim); margin: 4px 0 6px 20px; }
+.chance-action { font-size: 13px; font-weight: 600; color: var(--text); background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 10px; }
+.chance-ref { font-weight: 400; color: var(--text-muted); margin-top: 4px; }
+.chance-ref a { color: var(--accent); }
+.chance-details { margin-top: 12px; }
+.chance-details summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--accent); }
+.chance-details-body { padding-top: 12px; }
+
 /* SUMMARY */
 .summary-group { padding: 10px 0 4px; }
 .summary-group h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -1302,7 +1312,7 @@ body {
     </div>
     <div class="card" id="discoverInsightsCard" style="display:none">
       <div class="card-header" onclick="toggleCard(this)">
-        <h3>🤖 <span data-t="discover_insights_title">AI Discover Insights</span></h3>
+        <h3>🎯 <span data-t="discover_insights_title">Discover chances</span></h3>
         <div class="export-btn-wrap"><button class="export-btn" onclick="event.stopPropagation();toggleExportMenu(this)">↓ <span data-t="export_btn">Export</span></button><div class="export-dropdown"><button onclick="exportSection('discoverInsights','csv')">CSV</button><button onclick="exportSection('discoverInsights','json')">JSON</button></div></div>
         <span class="chevron">▼</span>
       </div>
@@ -1689,7 +1699,34 @@ const T = {
     kpi_spell: "Spelling mistakes",
     kpi_quality: "Quality issues",
     // Discover Insights
-    discover_insights_title: "AI Discover Insights",
+    discover_insights_title: "Discover chances",
+    kpi_chances: "Discover chances",
+    chance_title: "Discover chances",
+    chance_high: "High",
+    chance_medium: "Medium",
+    chance_low: "Low",
+    chance_sig_auth: "Authority",
+    chance_sig_rec: "Recurrence",
+    chance_sig_perf: "Performance",
+    chance_auth_core: "Core topic of the site, already on Discover ({n} article(s) in 90 days).",
+    chance_auth_adjacent: "Topic close to the site's themes, already on Discover ({n} article(s) in 90 days).",
+    chance_auth_unseen: "Within the site's themes, but no article on this topic reached Discover in 90 days.",
+    chance_auth_off: "Outside the site's themes, never on Discover in 90 days.",
+    chance_auth_off_seen: "Outside the site's main themes, but {n} article(s) reached Discover in 90 days.",
+    chance_rec: "{n} article(s) on this topic on Discover in {days} days.",
+    chance_rec_none: "No article on this topic on Discover in {days} days.",
+    chance_rec_10d: "Including {n} in the last 10 days.",
+    chance_perf: "An article on this topic gets {x}× the clicks of the site's median article (90 days, {n} article(s)).",
+    chance_perf_none: "No data: no article on this topic on Discover in 90 days.",
+    chance_act_high: "Strong topic: publish fast and polish the title and image.",
+    chance_act_medium: "Fair chances: a strong title and image will make the difference.",
+    chance_act_crowded: "Topic heavily covered in the last 10 days: bring a new angle so you don't compete with your own articles.",
+    chance_act_low: "Few Discover signals on this topic: aim for Search, or an angle closer to the site's strong topics.",
+    chance_act_off: "Topic outside the site's themes: aim for Search rather than Discover.",
+    chance_ref: "Reference:",
+    chance_clicks: "{n} clicks in {days} days",
+    chance_details: "See the detailed figures",
+    authority_90d: "Last 90 days",
     settings_sheet_label: "Discover Data (Google Sheets URL)",
     settings_sheet_hint: "Google Sheets with one tab per site. Columns: URL, Clicks, Impressions, CTR.",
     settings_sheet_30d_label: "Discover Last 30 Days (Google Sheets URL)",
@@ -1712,8 +1749,8 @@ const T = {
     trend_trending: "Trending on Discover",
     trend_absent: "Not on Discover",
     trend_articles: "article(s)",
-    authority_para_on: "{count} article(s) about {topic} were on Discover in the last 30 days (out of {total} in the dataset).",
-    authority_para_off: "No articles about {topic} were found on Discover in the last 30 days. The dataset has {total} article(s) on Discover overall.",
+    authority_para_on: "{count} article(s) about {topic} were on Discover in the last 90 days (out of {total} in the dataset).",
+    authority_para_off: "No articles about {topic} were found on Discover in the last 90 days. The dataset has {total} article(s) on Discover overall.",
     authority_para_on_10d: "{count} article(s) about {topic} were on Discover in the last 10 days (out of {total} in the dataset).",
     authority_para_off_10d: "No articles about {topic} were found on Discover in the last 10 days. The dataset has {total} article(s) on Discover overall.",
     discover_cap_note: "The dataset is capped at ~1,000 rows. Older articles in the 30-day file may have been pushed out, which is why the 30-day count can be lower than the 10-day count.",
@@ -1731,7 +1768,7 @@ const T = {
     pdf_modal_desc: "Select the sections to include:",
     pdf_sec_kpi: "KPI Summary",
     pdf_sec_discover: "Discover Eligibility",
-    pdf_sec_discover_insights: "AI Discover Insights",
+    pdf_sec_discover_insights: "Discover chances",
     pdf_sec_search_insights: "AI Search Insights",
     pdf_sec_content: "Article Structure & Spellcheck",
     pdf_sec_quality: "Content Quality",
@@ -2097,7 +2134,34 @@ const T = {
     err_empty_html: "Collez du code HTML à analyser.",
     kpi_spell: "Fautes d'orthographe",
     kpi_quality: "Problèmes de qualité",
-    discover_insights_title: "Discover IA Insights",
+    discover_insights_title: "Chances Discover",
+    kpi_chances: "Chances Discover",
+    chance_title: "Chances Discover",
+    chance_high: "Élevées",
+    chance_medium: "Moyennes",
+    chance_low: "Faibles",
+    chance_sig_auth: "Autorité",
+    chance_sig_rec: "Récurrence",
+    chance_sig_perf: "Performance",
+    chance_auth_core: "Sujet au cœur du site, déjà vu sur Discover ({n} article(s) en 90 jours).",
+    chance_auth_adjacent: "Sujet voisin des thèmes du site, déjà vu sur Discover ({n} article(s) en 90 jours).",
+    chance_auth_unseen: "Dans les thèmes du site, mais aucun article sur ce sujet n'est passé sur Discover en 90 jours.",
+    chance_auth_off: "Hors des thèmes du site, jamais vu sur Discover en 90 jours.",
+    chance_auth_off_seen: "Hors des thèmes principaux du site, mais {n} article(s) passé(s) sur Discover en 90 jours.",
+    chance_rec: "{n} article(s) sur ce sujet passé(s) sur Discover en {days} jours.",
+    chance_rec_none: "Aucun article sur ce sujet passé sur Discover en {days} jours.",
+    chance_rec_10d: "Dont {n} ces 10 derniers jours.",
+    chance_perf: "Un article sur ce sujet fait {x}× les clics d'un article médian du site (90 jours, {n} article(s)).",
+    chance_perf_none: "Pas de données : aucun article sur ce sujet sur Discover en 90 jours.",
+    chance_act_high: "Sujet porteur : publiez vite et soignez le titre et l'image.",
+    chance_act_medium: "Chances correctes : un titre et une image forts feront la différence.",
+    chance_act_crowded: "Sujet très traité ces 10 derniers jours : apportez un angle neuf pour ne pas concurrencer vos propres articles.",
+    chance_act_low: "Peu de signaux Discover sur ce sujet : visez plutôt Search, ou un angle plus proche des sujets forts du site.",
+    chance_act_off: "Sujet hors des thèmes du site : visez plutôt Search que Discover.",
+    chance_ref: "Référence :",
+    chance_clicks: "{n} clics en {days} jours",
+    chance_details: "Voir les chiffres détaillés",
+    authority_90d: "90 derniers jours",
     settings_sheet_label: "Données Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets avec un onglet par site. Colonnes : URL, Clics, Impressions, CTR.",
     settings_sheet_30d_label: "Discover 30 derniers jours (URL Google Sheets)",
@@ -2120,8 +2184,8 @@ const T = {
     trend_trending: "En hausse sur Discover",
     trend_absent: "Absent de Discover",
     trend_articles: "article(s)",
-    authority_para_on: "{count} article(s) sur {topic} étaient sur Discover au cours des 30 derniers jours (sur {total} dans le jeu de données).",
-    authority_para_off: "Aucun article sur {topic} n'a été trouvé sur Discover au cours des 30 derniers jours. Le jeu de données contient {total} article(s) sur Discover au total.",
+    authority_para_on: "{count} article(s) sur {topic} étaient sur Discover au cours des 90 derniers jours (sur {total} dans le jeu de données).",
+    authority_para_off: "Aucun article sur {topic} n'a été trouvé sur Discover au cours des 90 derniers jours. Le jeu de données contient {total} article(s) sur Discover au total.",
     authority_para_on_10d: "{count} article(s) sur {topic} étaient sur Discover au cours des 10 derniers jours (sur {total} dans le jeu de données).",
     authority_para_off_10d: "Aucun article sur {topic} n'a été trouvé sur Discover au cours des 10 derniers jours. Le jeu de données contient {total} article(s) sur Discover au total.",
     discover_cap_note: "Le fichier est limité à ~1 000 lignes. Les articles plus anciens du fichier 30 jours peuvent avoir été supprimés, ce qui explique pourquoi le total 30 jours peut être inférieur à celui de 10 jours.",
@@ -2138,7 +2202,7 @@ const T = {
     pdf_modal_desc: "Selectionnez les sections a inclure :",
     pdf_sec_kpi: "Resume KPI",
     pdf_sec_discover: "Eligibilite Discover",
-    pdf_sec_discover_insights: "Insights IA Discover",
+    pdf_sec_discover_insights: "Chances Discover",
     pdf_sec_search_insights: "Insights IA Search",
     pdf_sec_content: "Structure & orthographe",
     pdf_sec_quality: "Qualite du contenu",
@@ -2484,7 +2548,34 @@ const T = {
     err_empty_html: "Cole o código HTML para analisar.",
     kpi_spell: "Erros de ortografia",
     kpi_quality: "Problemas de qualidade",
-    discover_insights_title: "Discover IA Insights",
+    discover_insights_title: "Chances no Discover",
+    kpi_chances: "Chances no Discover",
+    chance_title: "Chances no Discover",
+    chance_high: "Altas",
+    chance_medium: "Médias",
+    chance_low: "Baixas",
+    chance_sig_auth: "Autoridade",
+    chance_sig_rec: "Recorrência",
+    chance_sig_perf: "Desempenho",
+    chance_auth_core: "Tema central do site, já visto no Discover ({n} artigo(s) em 90 dias).",
+    chance_auth_adjacent: "Tema próximo dos temas do site, já visto no Discover ({n} artigo(s) em 90 dias).",
+    chance_auth_unseen: "Dentro dos temas do site, mas nenhum artigo sobre o tema chegou ao Discover em 90 dias.",
+    chance_auth_off: "Fora dos temas do site, nunca visto no Discover em 90 dias.",
+    chance_auth_off_seen: "Fora dos temas principais do site, mas {n} artigo(s) chegaram ao Discover em 90 dias.",
+    chance_rec: "{n} artigo(s) sobre o tema no Discover em {days} dias.",
+    chance_rec_none: "Nenhum artigo sobre o tema no Discover em {days} dias.",
+    chance_rec_10d: "Sendo {n} nos últimos 10 dias.",
+    chance_perf: "Um artigo sobre o tema faz {x}× os cliques de um artigo mediano do site (90 dias, {n} artigo(s)).",
+    chance_perf_none: "Sem dados: nenhum artigo sobre o tema no Discover em 90 dias.",
+    chance_act_high: "Tema forte: publique rápido e caprive no título e na imagem.",
+    chance_act_medium: "Chances razoáveis: um título e uma imagem fortes farão a diferença.",
+    chance_act_crowded: "Tema muito tratado nos últimos 10 dias: traga um ângulo novo para não competir com os próprios artigos.",
+    chance_act_low: "Poucos sinais de Discover sobre o tema: mire no Search ou num ângulo mais próximo dos temas fortes do site.",
+    chance_act_off: "Tema fora dos temas do site: mire no Search em vez do Discover.",
+    chance_ref: "Referência:",
+    chance_clicks: "{n} cliques em {days} dias",
+    chance_details: "Ver os números detalhados",
+    authority_90d: "Últimos 90 dias",
     settings_sheet_label: "Dados Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets com uma aba por site. Colunas: URL, Cliques, Impressões, CTR.",
     settings_sheet_30d_label: "Discover Últimos 30 Dias (URL Google Sheets)",
@@ -2507,8 +2598,8 @@ const T = {
     trend_trending: "Em alta no Discover",
     trend_absent: "Fora do Discover",
     trend_articles: "artigo(s)",
-    authority_para_on: "{count} artigo(s) sobre {topic} estiveram no Discover nos últimos 30 dias (de {total} no conjunto de dados).",
-    authority_para_off: "Nenhum artigo sobre {topic} foi encontrado no Discover nos últimos 30 dias. O conjunto de dados tem {total} artigo(s) no Discover no total.",
+    authority_para_on: "{count} artigo(s) sobre {topic} estiveram no Discover nos últimos 90 dias (de {total} no conjunto de dados).",
+    authority_para_off: "Nenhum artigo sobre {topic} foi encontrado no Discover nos últimos 90 dias. O conjunto de dados tem {total} artigo(s) no Discover no total.",
     authority_para_on_10d: "{count} artigo(s) sobre {topic} estiveram no Discover nos últimos 10 dias (de {total} no conjunto de dados).",
     authority_para_off_10d: "Nenhum artigo sobre {topic} foi encontrado no Discover nos últimos 10 dias. O conjunto de dados tem {total} artigo(s) no Discover no total.",
     discover_cap_note: "O arquivo é limitado a ~1.000 linhas. Artigos mais antigos no arquivo de 30 dias podem ter sido removidos, por isso a contagem de 30 dias pode ser menor que a de 10 dias.",
@@ -2525,7 +2616,7 @@ const T = {
     pdf_modal_desc: "Selecione as secoes a incluir:",
     pdf_sec_kpi: "Resumo KPI",
     pdf_sec_discover: "Eligibilidade Discover",
-    pdf_sec_discover_insights: "Insights IA Discover",
+    pdf_sec_discover_insights: "Chances no Discover",
     pdf_sec_search_insights: "Insights IA Search",
     pdf_sec_content: "Estrutura & ortografia",
     pdf_sec_quality: "Qualidade do conteudo",
@@ -2889,7 +2980,34 @@ const T = {
     news_days_ago: "hace {n} días",
     kpi_spell: "Errores ortográficos",
     kpi_quality: "Problemas de calidad",
-    discover_insights_title: "Discover IA Insights",
+    discover_insights_title: "Posibilidades en Discover",
+    kpi_chances: "Posibilidades Discover",
+    chance_title: "Posibilidades en Discover",
+    chance_high: "Altas",
+    chance_medium: "Medias",
+    chance_low: "Bajas",
+    chance_sig_auth: "Autoridad",
+    chance_sig_rec: "Recurrencia",
+    chance_sig_perf: "Rendimiento",
+    chance_auth_core: "Tema central del sitio, ya visto en Discover ({n} artículo(s) en 90 días).",
+    chance_auth_adjacent: "Tema cercano a los del sitio, ya visto en Discover ({n} artículo(s) en 90 días).",
+    chance_auth_unseen: "Dentro de los temas del sitio, pero ningún artículo sobre el tema llegó a Discover en 90 días.",
+    chance_auth_off: "Fuera de los temas del sitio, nunca visto en Discover en 90 días.",
+    chance_auth_off_seen: "Fuera de los temas principales del sitio, pero {n} artículo(s) llegaron a Discover en 90 días.",
+    chance_rec: "{n} artículo(s) sobre el tema en Discover en {days} días.",
+    chance_rec_none: "Ningún artículo sobre el tema en Discover en {days} días.",
+    chance_rec_10d: "De ellos, {n} en los últimos 10 días.",
+    chance_perf: "Un artículo sobre el tema logra {x}× los clics de un artículo mediano del sitio (90 días, {n} artículo(s)).",
+    chance_perf_none: "Sin datos: ningún artículo sobre el tema en Discover en 90 días.",
+    chance_act_high: "Tema fuerte: publica rápido y cuida el título y la imagen.",
+    chance_act_medium: "Posibilidades correctas: un título y una imagen fuertes marcarán la diferencia.",
+    chance_act_crowded: "Tema muy tratado en los últimos 10 días: aporta un ángulo nuevo para no competir con tus propios artículos.",
+    chance_act_low: "Pocas señales de Discover sobre el tema: apunta a Search o a un ángulo más cercano a los temas fuertes del sitio.",
+    chance_act_off: "Tema fuera de los temas del sitio: apunta a Search antes que a Discover.",
+    chance_ref: "Referencia:",
+    chance_clicks: "{n} clics en {days} días",
+    chance_details: "Ver las cifras detalladas",
+    authority_90d: "Últimos 90 días",
     settings_sheet_label: "Datos Discover (URL Google Sheets)",
     settings_sheet_hint: "Google Sheets con una pestaña por sitio. Columnas: URL, Clics, Impresiones, CTR.",
     settings_sheet_30d_label: "Discover Últimos 30 Días (URL Google Sheets)",
@@ -2912,8 +3030,8 @@ const T = {
     trend_trending: "En tendencia en Discover",
     trend_absent: "Fuera de Discover",
     trend_articles: "artículo(s)",
-    authority_para_on: "{count} artículo(s) sobre {topic} estuvieron en Discover en los últimos 30 días (de {total} en el conjunto de datos).",
-    authority_para_off: "No se encontraron artículos sobre {topic} en Discover en los últimos 30 días. El conjunto de datos tiene {total} artículo(s) en Discover en total.",
+    authority_para_on: "{count} artículo(s) sobre {topic} estuvieron en Discover en los últimos 90 días (de {total} en el conjunto de datos).",
+    authority_para_off: "No se encontraron artículos sobre {topic} en Discover en los últimos 90 días. El conjunto de datos tiene {total} artículo(s) en Discover en total.",
     authority_para_on_10d: "{count} artículo(s) sobre {topic} estuvieron en Discover en los últimos 10 días (de {total} en el conjunto de datos).",
     authority_para_off_10d: "No se encontraron artículos sobre {topic} en Discover en los últimos 10 días. El conjunto de datos tiene {total} artículo(s) en Discover en total.",
     discover_cap_note: "El archivo está limitado a ~1.000 filas. Los artículos más antiguos del archivo de 30 días pueden haber sido eliminados, por eso el total de 30 días puede ser menor que el de 10 días.",
@@ -2930,7 +3048,7 @@ const T = {
     pdf_modal_desc: "Seleccione las secciones a incluir:",
     pdf_sec_kpi: "Resumen KPI",
     pdf_sec_discover: "Eligibilidad Discover",
-    pdf_sec_discover_insights: "Insights IA Discover",
+    pdf_sec_discover_insights: "Posibilidades en Discover",
     pdf_sec_search_insights: "Insights IA Search",
     pdf_sec_content: "Estructura & ortografia",
     pdf_sec_quality: "Calidad del contenido",
@@ -6274,6 +6392,10 @@ async function runDiscoverAuthority(url, title, overrideTab) {
   }).join('\n');
 
   const totalArticles = allRows.length;
+  const profile = SITE_AUTHORITY[tab];
+  const siteContext = profile
+    ? `\n\nThe site (${tab}) is: ${profile.desc}. Its core topics: ${profile.topics}.`
+    : '\n\nNo site profile is available: answer "core" for site_fit.';
 
   // GPT only identifies which URLs match the topic — all math done in JS
   let data;
@@ -6284,6 +6406,8 @@ async function runDiscoverAuthority(url, title, overrideTab) {
         { role: 'system', content: `You are a Discover performance analyst. The user is checking an article. You have a numbered list of Discover URLs from the same site (pre-filtered by keyword).
 
 Identify which URLs are truly about the SAME TOPIC as the article (same team, player, event, or subject — not just vaguely related). Return the topic name and the indices of matching URLs. Do NOT compute any stats — just identify matches.
+
+Also rate how the article topic fits the site's editorial scope (site_fit): core = one of its core topics, adjacent = related but not core, off = outside its scope.${siteContext}
 
 URL list format: [index] path | clicks | impressions` },
         { role: 'user', content: `Article title: "${title}"\n\nCandidate URLs (${subset.length} pre-filtered from ${totalArticles} total):\n${compactList || '(no keyword matches found)'}` }
@@ -6297,9 +6421,10 @@ URL list format: [index] path | clicks | impressions` },
             type: 'object',
             properties: {
               topic: { type: 'string', description: 'The article topic in 2-5 words (e.g. "Chelsea transfer window", "Lamine Camara future")' },
-              matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' }
+              matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' },
+              site_fit: { type: 'string', enum: ['core', 'adjacent', 'off'] }
             },
-            required: ['topic', 'matching_indices']
+            required: ['topic', 'matching_indices', 'site_fit']
           }
         }
       }],
@@ -6394,7 +6519,11 @@ URL list format: [index] path | clicks | impressions` },
       match_10d: match10,
       site_stats_10d: siteStats10,
       total_articles_10d: rows10.length,
-      trend: trend
+      trend: trend,
+      site_fit: gpt.site_fit || 'core',
+      topic_median_clicks: count > 0 ? computeMedian(matchingRows.map(r => r.clicks)) : 0,
+      // Best recent article on the topic, shown to the editor as a reference
+      reference: match30.top_articles?.[0] ? { ...match30.top_articles[0], days: 30 } : topArticlesMain[0] ? { ...topArticlesMain[0], days: 90 } : null
     };
     return result;
   } catch(e) { return null; }
@@ -6417,20 +6546,82 @@ function renderTopArticles(articles) {
   return html;
 }
 
+// Editor-facing verdict from three plain signals. A level, not a percentage: a probability could not be calibrated.
+// Sheets: main = last 90 days, plus 30-day and 10-day exports
+function computeDiscoverChances(d) {
+  const pts = { ok: 2, warning: 1, fail: 0, a_verifier: 0 };
+  const n90 = d.matching_count;
+  const n30 = d.has_30d ? d.match_30d.count : null;
+  const n10 = d.has_10d ? d.match_10d.count : null;
+  const fit = d.site_fit || 'core';
+  // Authority: the topic belongs to the site's scope and has already reached Discover (90 days)
+  const authority = fit === 'off'
+    ? { status: n90 ? 'warning' : 'fail', text: t(n90 ? 'chance_auth_off_seen' : 'chance_auth_off', { n: n90 }) }
+    : { status: n90 ? 'ok' : 'warning', text: t(n90 ? (fit === 'core' ? 'chance_auth_core' : 'chance_auth_adjacent') : 'chance_auth_unseen', { n: n90 }) };
+  // Recurrence: topic articles that reached Discover lately (30 days, else 90)
+  const recent = n30 != null ? n30 : n90, days = n30 != null ? 30 : 90;
+  const recurrence = { status: recent >= 3 ? 'ok' : recent >= 1 ? 'warning' : 'fail',
+    text: t(recent ? 'chance_rec' : 'chance_rec_none', { n: recent, days }) + (n10 ? ' ' + t('chance_rec_10d', { n: n10 }) : '') };
+  // Performance: median clicks of the topic against the site median (90 days; medians resist a single viral article)
+  let performance;
+  if (!n90 || !d.site_stats?.median_clicks) performance = { status: 'a_verifier', text: t('chance_perf_none') };
+  else {
+    const ratio = d.topic_median_clicks / d.site_stats.median_clicks;
+    const x = LANG === 'en' ? ratio.toFixed(1) : ratio.toFixed(1).replace('.', ',');
+    performance = { status: ratio >= 1.5 ? 'ok' : ratio >= 0.7 ? 'warning' : 'fail', text: t('chance_perf', { x, n: n90 }) };
+  }
+  const score = pts[authority.status] + pts[recurrence.status] + pts[performance.status];
+  const level = score >= 5 ? 'high' : score >= 3 ? 'medium' : 'low';
+  const action = level === 'low' ? (fit === 'off' ? 'chance_act_off' : 'chance_act_low')
+    : n10 >= 3 ? 'chance_act_crowded'
+    : level === 'high' ? 'chance_act_high' : 'chance_act_medium';
+  return {
+    level,
+    signals: [
+      { label: t('chance_sig_auth'), ...authority },
+      { label: t('chance_sig_rec'), ...recurrence },
+      { label: t('chance_sig_perf'), ...performance }
+    ],
+    action: t(action)
+  };
+}
+
+// Readable label from an article URL: last path segment without ids and extension
+function articleLabelFromUrl(url) {
+  let seg = '';
+  try { seg = new URL(url).pathname.split('/').filter(Boolean).pop() || ''; } catch(e) { seg = url; }
+  try { seg = decodeURIComponent(seg); } catch(e) {}
+  seg = seg.replace(/\.html?$/i, '').replace(/_\d+$/, '').replace(/^\d+-/, '').replace(/[-_]+/g, ' ').trim();
+  return seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : url;
+}
+
 function renderDiscoverInsights(d) {
   const card = document.getElementById('discoverInsightsCard');
   const body = document.getElementById('discoverInsightsBody');
   if (!d) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
+  const c = computeDiscoverChances(d);
+  const color = { high: 'green', medium: 'amber', low: 'red' }[c.level];
+  let html = `<div class="chance-verdict"><span class="tl-dot ${color}"></span><strong>${t('chance_title')} : ${t('chance_' + c.level)}</strong></div>`;
+  html += `<div class="chance-sub">${esc(d.topic || '')} · ${esc(d.site)}</div>`;
+  html += c.signals.map(sg => `<div class="check-row"><div class="status-dot ${sg.status}"></div><div class="check-label">${esc(sg.label)}</div><div class="check-detail">${esc(sg.text)}</div></div>`).join('');
+  html += `<div class="chance-action">→ ${esc(c.action)}`;
+  if (d.reference) {
+    html += `<div class="chance-ref">${t('chance_ref')} <a href="${safeUrl(d.reference.url)}" target="_blank" rel="noopener">${esc(articleLabelFromUrl(d.reference.url))}</a> · ${esc(t('chance_clicks', { n: Math.round(d.reference.clicks).toLocaleString(), days: d.reference.days }))}</div>`;
+  }
+  html += `</div>`;
+
+  // The former figures and tables stay available for those who want to dig
+  let details = '';
   const isOn = d.matching_count > 0;
   const levelColor = isOn ? 'green' : 'red';
   const levelLabel = isOn ? t('authority_on_discover') : t('authority_not_on_discover');
 
-  let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+  details += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <span class="tl-dot ${levelColor}"></span>
     <strong>${levelLabel}</strong>
-    <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${d.site} · ${t('authority_30d')}</span>
+    <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${d.site} · ${t('authority_90d')}</span>
   </div>`;
 
   // Trend badge (only if 30d or 10d data was available)
@@ -6447,46 +6638,47 @@ function renderDiscoverInsights(d) {
     if (d.has_30d) periods.push(`${t('authority_30d')}: ${d.match_30d.count}`);
     if (d.has_10d) periods.push(`${t('authority_10d')}: ${d.match_10d.count}`);
     const periodStr = periods.join(' · ') + ' ' + t('trend_articles');
-    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:13px">
+    details += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:13px">
       <span>${tr.icon}</span>
       <strong style="color:${tr.color}">${t(tr.tKey)}</strong>
       <span style="color:var(--text-muted);margin-left:auto;font-size:12px">${periodStr}</span>
     </div>`;
     // Show cap note when 30d count < 10d count (data truncation)
     if (d.has_30d && d.has_10d && d.match_30d.count < d.match_10d.count) {
-      html += `<div style="font-size:12px;padding:6px 12px;margin-bottom:12px;border-radius:var(--radius-sm);background:var(--accent-glow,#eef);color:var(--accent,#6366f1);line-height:1.5">ℹ️ ${t('discover_cap_note')}</div>`;
+      details += `<div style="font-size:12px;padding:6px 12px;margin-bottom:12px;border-radius:var(--radius-sm);background:var(--accent-glow,#eef);color:var(--accent,#6366f1);line-height:1.5">ℹ️ ${t('discover_cap_note')}</div>`;
     }
   }
 
   // ── Last 30 days paragraph ──
   if (isOn && d.site_stats) {
     const para30 = t('authority_para_on', { topic: d.topic, count: d.matching_count, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
-    html += buildComparisonTable(d, d.site_stats, 'Topic');
-    html += renderTopArticles(d.top_articles);
+    details += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
+    details += buildComparisonTable(d, d.site_stats, 'Topic');
+    details += renderTopArticles(d.top_articles);
   } else {
     const para30 = t('authority_para_off', { topic: d.topic, total: d.total_articles });
-    html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
+    details += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para30)}</p>`;
   }
 
   // ── Last 10 days paragraph ──
   if (d.has_10d) {
-    html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">`;
-    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    details += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">`;
+    details += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span style="font-weight:600;font-size:13px;color:var(--text-muted)">${t('authority_10d')}</span>
     </div>`;
     if (d.match_10d.count > 0 && d.site_stats_10d) {
       const para10 = t('authority_para_on_10d', { topic: d.topic, count: d.match_10d.count, total: d.total_articles_10d });
-      html += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para10)}</p>`;
-      html += buildComparisonTable(d.match_10d, d.site_stats_10d, 'Topic');
-      html += renderTopArticles(d.match_10d.top_articles);
+      details += `<p style="color:var(--text);line-height:1.7;margin:0 0 12px 0">${esc(para10)}</p>`;
+      details += buildComparisonTable(d.match_10d, d.site_stats_10d, 'Topic');
+      details += renderTopArticles(d.match_10d.top_articles);
     } else {
       const para10 = t('authority_para_off_10d', { topic: d.topic, total: d.total_articles_10d || 0 });
-      html += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para10)}</p>`;
+      details += `<p style="color:var(--text);line-height:1.7;margin:0">${esc(para10)}</p>`;
     }
-    html += `</div>`;
+    details += `</div>`;
   }
 
+  html += `<details class="chance-details"><summary>${t('chance_details')}</summary><div class="chance-details-body">${details}</div></details>`;
   body.innerHTML = html;
 }
 
@@ -6969,8 +7161,12 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
     { label: t('kpi_links'), value: linkCount, color: linkCount>0?'green':'amber' },
     { label: t('kpi_h2'), value: h2Count, color: h2Count>0?'green':'amber' },
   ];
+  // Discover chances from the site's own GSC data (replaces GPT's free 0-100 Discover score)
+  if (discoverAuthority) {
+    const level = computeDiscoverChances(discoverAuthority).level;
+    kpis.push({ label: t('kpi_chances'), value: t('chance_' + level), color: { high: 'green', medium: 'amber', low: 'red' }[level] });
+  }
   if (aiResult) {
-    kpis.push({ label: t('kpi_discover_ai'), value: (aiResult.discover?.score ?? '?') + '/100', color: (aiResult.discover?.score||0)>=70?'green':(aiResult.discover?.score||0)>=40?'amber':'red' });
     if (aiResult.search?.score_lisibilite_mot_cle != null)
       kpis.push({ label: t('kpi_seo'), value: aiResult.search.score_lisibilite_mot_cle + '/100', color: aiResult.search.score_lisibilite_mot_cle>=60?'green':aiResult.search.score_lisibilite_mot_cle>=30?'amber':'red' });
   }
