@@ -3823,7 +3823,7 @@ async function startAnalysis(mode) {
     const otherPromises = [];
     const otherLabels = [];
     if (doSpell) { otherPromises.push(runSpellcheck(bodyText, doc).catch(e => { spellError = e.message; console.warn('Spellcheck failed:', e.message); return null; })); otherLabels.push('spell'); }
-    if (doQuality) { otherPromises.push(runQualityCheck(title, bodyText, url).catch(e => { qualityError = e.message; console.warn('Quality check failed:', e.message); return null; })); otherLabels.push('quality'); }
+    if (doQuality) { otherPromises.push(runQualityCheck(title, bodyText, url, selectedSite).catch(e => { qualityError = e.message; console.warn('Quality check failed:', e.message); return null; })); otherLabels.push('quality'); }
     if (doDiscoverAuth) { otherPromises.push(runDiscoverAuthority(url, title, selectedSite).catch(e => { console.warn('Discover authority failed:', e.message); return null; })); otherLabels.push('discoverAuth'); }
     if (doSearchAuth) { otherPromises.push(runSearchAuthority(url, title, selectedSite).catch(e => { console.warn('Search authority failed:', e.message); return null; })); otherLabels.push('searchAuth'); }
 
@@ -6116,7 +6116,8 @@ Respond ONLY via the spellcheck_report tool.`;
 }
 
 // ========== CONTENT QUALITY CHECK (AI) ==========
-async function runQualityCheck(title, bodyText, articleUrl) {
+async function runQualityCheck(title, bodyText, articleUrl, site) {
+  const topicLang = siteLanguageName(site) || 'the language of the article';
   const words = bodyText.split(/\s+/);
   const excerpt = words.slice(0, 4000).join(' ');
   // Extract first paragraph as chapô (lead)
@@ -6214,7 +6215,7 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
                 type: 'object',
                 description: 'Article identity analysis — MUST be determined before any evaluation',
                 properties: {
-                  topic: { type: 'string', description: 'The real topic derived from the title. E.g. "attendance figures roundup", "transfer news", "match preview Man Utd vs Tottenham"' },
+                  topic: { type: 'string', description: `The real topic derived from the title, written in ${topicLang}. E.g. "attendance figures roundup", "transfer news", "match preview Man Utd vs Tottenham" (translated)` },
                   type: { type: 'string', enum: ['match-report','preview','transfer-news','rankings-list','roundup-compilation','analysis','interview','player-profile','opinion','news','other'], description: 'Article type category' },
                   key_facts: { type: 'array', items: { type: 'string' }, description: 'The 3-5 most important specific facts (numbers, scores, stats) used to check for cross-paragraph repetition' },
                   repeated_facts: { type: 'array', items: { type: 'object', properties: { fact: { type: 'string', description: 'The specific fact/number that is repeated with NO new information added' }, locations: { type: 'integer', description: 'Number of separate locations where this fact appears with no added value (excluding chapô)' }, positions: { type: 'array', items: { type: 'string' }, description: 'Specific paragraph numbers where each redundant occurrence appears, e.g. ["§3", "§7"]. Count from 1 after chapô. One entry per occurrence.' } }, required: ['fact', 'locations', 'positions'] }, description: 'Facts restated in 2+ paragraphs with NO new context or details added (pure redundancy). Do NOT include facts that reappear with added analysis, quotes, or new information — that is normal writing. Empty array if no true redundancy found.' }
@@ -6408,6 +6409,80 @@ function extractTopicKeywords(title) {
     .map(w => w.normalize('NFD').replace(/\p{Diacritic}/gu, ''));
 }
 
+// ========== TOPIC MATCHING (Discover + Search) ==========
+const LANG_NAMES = { fr: 'French', en: 'English', 'pt-BR': 'Brazilian Portuguese', es: 'Spanish' };
+const TOPIC_EXAMPLES = {
+  French: '"mercato Barça", "transfert PSG", "blessure Mbappé", "Ligue des champions"',
+  English: '"Chelsea transfers", "Arsenal injuries", "Champions League final"',
+  'Brazilian Portuguese': '"mercado do Flamengo", "lesão de Neymar", "Seleção Brasileira"',
+  Spanish: '"fichajes del Real Madrid", "lesión de Pedri", "Liga Endesa"'
+};
+// Topics and keywords are written in the language of the analysed site (TopMercato → French), never English by default
+function siteLanguageName(site) { return LANG_NAMES[SITE_LANG_MAP[site]] || null; }
+
+// Picks the site's GSC URLs about the article's topic and names that topic the way an editor looks up
+// figures ("mercato Barça"), in the site's language. Shared by the Discover and Search analyses
+async function matchTopicRows(title, rows, tab, source) {
+  const keywords = extractTopicKeywords(title);
+  if (keywords.length === 0) return null;
+  // URLs naming the title's proper nouns (Barça, Deco...) come first, so generic words of the title
+  // ("après", "autre"...) don't take their place in the 150 URLs sent to GPT
+  const entityKw = new Set(extractTopicKeywords(title.split(/\s+/).slice(1).filter(w => /^\p{Lu}/u.test(w)).join(' ')));
+  const relevance = r => { const slug = r.url.toLowerCase(); return keywords.reduce((a, kw) => a + (slug.includes(kw) ? (entityKw.has(kw) ? 3 : 1) : 0), 0); };
+  const subset = rows.filter(r => relevance(r) > 0)
+    .map(r => ({ r, score: relevance(r) })).sort((a, b) => b.score - a.score).map(x => x.r).slice(0, 150);
+  const compactList = subset.map((r, i) => `[${i}] ${r.url.replace(/https?:\/\/[^/]+/, '')} | ${r.clicks} | ${r.impressions}`).join('\n');
+
+  const lang = siteLanguageName(tab);
+  const examples = TOPIC_EXAMPLES[lang] || TOPIC_EXAMPLES.French;
+  const profile = SITE_AUTHORITY[tab];
+  const siteContext = profile
+    ? `\n\nThe site (${tab}) is: ${profile.desc}. Its core topics: ${profile.topics}.`
+    : '\n\nNo site profile is available: answer "core" for site_fit.';
+  const data = await callOpenAI({
+    model: OPENAI_MODEL,
+    messages: [
+      { role: 'system', content: `You are a Google ${source} performance analyst for a sports news site. The user is checking an article. You have a numbered list of the site's ${source} URLs (pre-filtered by keyword).
+
+Name the article's topic at the level an editor uses to look up the site's ${source} figures: the main club, player, team or competition plus the kind of story, in 2 to 4 words (e.g. ${examples}). Never the specific angle of this article (not "Barça winter transfer market complications").
+${lang ? `Write the topic in ${lang}, the language of the site, even if the title or the URLs contain other languages.` : 'Write the topic in the language of the article title.'}
+Then return the indices of the URLs about that same topic: same main entity and same kind of story, whatever the player or the angle (for "mercato Barça": every Barça transfer story). Do NOT compute any stats — just identify matches.
+
+Also rate how the article topic fits the site's editorial scope (site_fit): core = one of its core topics, adjacent = related but not core, off = outside its scope.${siteContext}
+
+URL list format: [index] path | clicks | impressions` },
+      { role: 'user', content: `Article title: "${title}"\n\nCandidate URLs (${subset.length} pre-filtered from ${rows.length} total):\n${compactList || '(no keyword matches found)'}` }
+    ],
+    tools: [{
+      type: 'function',
+      function: {
+        name: 'topic_matches',
+        description: 'Return the topic and indices of matching URLs',
+        parameters: {
+          type: 'object',
+          properties: {
+            topic: { type: 'string', description: `Broad topic in 2-4 words, in ${lang || 'the article language'}: main entity + kind of story` },
+            matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' },
+            site_fit: { type: 'string', enum: ['core', 'adjacent', 'off'] }
+          },
+          required: ['topic', 'matching_indices', 'site_fit']
+        }
+      }
+    }],
+    tool_choice: { type: 'function', function: { name: 'topic_matches' } },
+    temperature: 0.1
+  });
+  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!tc) return null;
+  const gpt = JSON.parse(tc.function.arguments);
+  return {
+    topic: gpt.topic,
+    site_fit: gpt.site_fit || 'core',
+    rows: (gpt.matching_indices || []).filter(i => i >= 0 && i < subset.length).map(i => subset[i]),
+    keywords
+  };
+}
+
 async function runDiscoverAuthority(url, title, overrideTab) {
   const sheetUrl = localStorage.getItem('media_dashboard_discover_sheet') || DEFAULT_DISCOVER_SHEET;
   if (!sheetUrl) return null;
@@ -6430,75 +6505,15 @@ async function runDiscoverAuthority(url, title, overrideTab) {
   const siteStats = computeSiteStats(allRows);
   const siteStats10 = rows10.length > 0 ? computeSiteStats(rows10) : null;
 
-  const keywords = extractTopicKeywords(title);
-  if (keywords.length === 0) return null;
-
-  // Pre-filter: keep rows where URL slug contains at least 1 keyword
-  const candidates = allRows.filter(r => {
-    const slug = r.url.toLowerCase();
-    return keywords.some(kw => slug.includes(kw));
-  });
-
-  // Prepare compact data for AI: send indexed slug + stats for candidates (max 150).
-  // URLs naming the title's proper nouns (Barça, Deco...) come first, so generic words of the title
-  // ("après", "autre"...) don't take their place in the list
-  const entityKw = new Set(extractTopicKeywords(title.split(/\s+/).slice(1).filter(w => /^\p{Lu}/u.test(w)).join(' ')));
-  const relevance = r => { const slug = r.url.toLowerCase(); return keywords.reduce((a, kw) => a + (slug.includes(kw) ? (entityKw.has(kw) ? 3 : 1) : 0), 0); };
-  const subset = candidates.map(r => ({ r, score: relevance(r) })).sort((a, b) => b.score - a.score).map(x => x.r).slice(0, 150);
-  const compactList = subset.map((r, i) => {
-    const path = r.url.replace(/https?:\/\/[^/]+/, '');
-    return `[${i}] ${path} | ${r.clicks} | ${r.impressions}`;
-  }).join('\n');
-
-  const totalArticles = allRows.length;
-  const profile = SITE_AUTHORITY[tab];
-  const siteContext = profile
-    ? `\n\nThe site (${tab}) is: ${profile.desc}. Its core topics: ${profile.topics}.`
-    : '\n\nNo site profile is available: answer "core" for site_fit.';
-
   // GPT only identifies which URLs match the topic — all math done in JS
-  let data;
+  let match;
+  try { match = await matchTopicRows(title, allRows, tab, 'Discover'); } catch(e) { return null; }
+  if (!match) return null;
+  const { keywords } = match;
+  const totalArticles = allRows.length;
+  const gpt = { topic: match.topic, site_fit: match.site_fit };
   try {
-    data = await callOpenAI({
-      model: OPENAI_MODEL,
-      messages: [
-        { role: 'system', content: `You are a Discover performance analyst. The user is checking an article. You have a numbered list of Discover URLs from the same site (pre-filtered by keyword).
-
-Name the article's topic at the level an editor uses to look up the site's Discover figures: the main club, player, team or competition plus the kind of story, in 2 to 4 words, in the language of the article title (e.g. "mercato Barça", "transfert PSG", "blessure Mbappé", "Ligue des champions"). Never the specific angle of this article (not "Barça winter mercato complications").
-Then return the indices of the URLs about that same topic: same main entity and same kind of story, whatever the player or the angle (for "mercato Barça": every Barça transfer story). Do NOT compute any stats — just identify matches.
-
-Also rate how the article topic fits the site's editorial scope (site_fit): core = one of its core topics, adjacent = related but not core, off = outside its scope.${siteContext}
-
-URL list format: [index] path | clicks | impressions` },
-        { role: 'user', content: `Article title: "${title}"\n\nCandidate URLs (${subset.length} pre-filtered from ${totalArticles} total):\n${compactList || '(no keyword matches found)'}` }
-      ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'discover_matches',
-          description: 'Return the topic and indices of matching URLs',
-          parameters: {
-            type: 'object',
-            properties: {
-              topic: { type: 'string', description: 'Broad topic in 2-4 words, in the article language: main entity + kind of story (e.g. "mercato Barça", "Chelsea transfers", "blessure Mbappé")' },
-              matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' },
-              site_fit: { type: 'string', enum: ['core', 'adjacent', 'off'] }
-            },
-            required: ['topic', 'matching_indices', 'site_fit']
-          }
-        }
-      }],
-      tool_choice: { type: 'function', function: { name: 'discover_matches' } },
-      temperature: 0.1
-    });
-  } catch(e) { return null; }
-  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!tc) return null;
-  try {
-    const gpt = JSON.parse(tc.function.arguments);
-    const matchingRows = (gpt.matching_indices || [])
-      .filter(i => i >= 0 && i < subset.length)
-      .map(i => subset[i]);
+    const matchingRows = match.rows;
     const count = matchingRows.length;
 
     // All stats computed in JS from actual CSV data
@@ -6763,62 +6778,14 @@ async function runSearchAuthority(url, title, overrideTab) {
 
   const siteStats = computeSiteStats(allRows);
 
-  const keywords = extractTopicKeywords(title);
-  if (keywords.length === 0) return null;
-
-  // Pre-filter: keep rows where URL slug contains at least 1 keyword
-  const candidates = allRows.filter(r => {
-    const slug = r.url.toLowerCase();
-    return keywords.some(kw => slug.includes(kw));
-  });
-
-  // Prepare compact data for AI: send indexed slug + stats for candidates (max 150)
-  const subset = candidates.slice(0, 150);
-  const compactList = subset.map((r, i) => {
-    const path = r.url.replace(/https?:\/\/[^/]+/, '');
-    return `[${i}] ${path} | ${r.clicks} | ${r.impressions}`;
-  }).join('\n');
-
+  // GPT only identifies which URLs match the topic — all math done in JS
+  let match;
+  try { match = await matchTopicRows(title, allRows, tab, 'Search'); } catch(e) { return null; }
+  if (!match) return null;
   const totalArticles = allRows.length;
-
-  let data;
+  const gpt = { topic: match.topic, site_fit: match.site_fit };
   try {
-    data = await callOpenAI({
-      model: OPENAI_MODEL,
-      messages: [
-        { role: 'system', content: `You are a Google Search performance analyst. The user is checking an article. You have a numbered list of Search URLs from the same site (pre-filtered by keyword).
-
-Identify which URLs are truly about the SAME TOPIC as the article (same team, player, event, or subject — not just vaguely related). Return the topic name and the indices of matching URLs. Do NOT compute any stats — just identify matches.
-
-URL list format: [index] path | clicks | impressions` },
-        { role: 'user', content: `Article title: "${title}"\n\nCandidate URLs (${subset.length} pre-filtered from ${totalArticles} total):\n${compactList || '(no keyword matches found)'}` }
-      ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'search_matches',
-          description: 'Return the topic and indices of matching URLs',
-          parameters: {
-            type: 'object',
-            properties: {
-              topic: { type: 'string', description: 'The article topic in 2-5 words' },
-              matching_indices: { type: 'array', items: { type: 'integer' }, description: 'Zero-based indices from the candidate list that are truly about the same topic. Empty array if none match.' }
-            },
-            required: ['topic', 'matching_indices']
-          }
-        }
-      }],
-      tool_choice: { type: 'function', function: { name: 'search_matches' } },
-      temperature: 0.1
-    });
-  } catch(e) { return null; }
-  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!tc) return null;
-  try {
-    const gpt = JSON.parse(tc.function.arguments);
-    const matchingRows = (gpt.matching_indices || [])
-      .filter(i => i >= 0 && i < subset.length)
-      .map(i => subset[i]);
+    const matchingRows = match.rows;
     const count = matchingRows.length;
 
     const topArticlesSearch = count > 0 ? [...matchingRows].sort((a, b) => b.clicks - a.clicks).slice(0, 3) : [];
@@ -6832,7 +6799,8 @@ URL list format: [index] path | clicks | impressions` },
       top_articles: topArticlesSearch,
       site: tab,
       site_stats: siteStats,
-      authority_level: count > 0 ? 'on_search' : 'not_on_search'
+      authority_level: count > 0 ? 'on_search' : 'not_on_search',
+      site_fit: gpt.site_fit
     };
     return result;
   } catch(e) { return null; }
@@ -7444,7 +7412,7 @@ Answer only through the title_report tool. Write every comment in ${langName}.`;
         type: 'object',
         properties: {
           keywords: { type: 'object', properties: {
-            main_keyword: { type: 'string', description: 'The query a reader would type in Google to find this article, in the article language' },
+            main_keyword: { type: 'string', description: `The query a reader would type in Google to find this article, in ${siteLanguageName(site) || 'the article language'}` },
             position: { type: 'string', enum: ['start', 'middle', 'end', 'absent'], description: 'Where that query (or its key name) sits in the headline; start = within the first five words' },
             missing_entities: { type: 'array', items: { type: 'string' }, description: 'Important names from the article missing from the headline, never a teased player; empty if none' },
             comment }, required: ['main_keyword', 'position', 'missing_entities', 'comment'] },
