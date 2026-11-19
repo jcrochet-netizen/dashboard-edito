@@ -3721,6 +3721,7 @@ function saveSettings() {
 // ========== SITE MAPS ==========
 const DOMAIN_TAB_MAP = {
   'topmercato.com': 'TOPMERCATO',
+  'dailymercato.com': 'DAILYMERCATO',
   'sportsmole.co.uk': 'SPORTSMOLE',
   'trivela.com.br': 'TRIVELA',
   'umdoisesportes.com.br': 'UMDOISESPORTES',
@@ -3739,7 +3740,7 @@ const DOMAIN_TAB_MAP = {
 };
 // Display labels for tab codes (used by SITE_OPTIONS and keyword checker)
 const TAB_LABELS = {
-  'TOPMERCATO': 'TopMercato', 'SPORTSMOLE': 'SportsMole', 'TRIVELA': 'Trivela',
+  'TOPMERCATO': 'TopMercato', 'DAILYMERCATO': 'DailyMercato', 'SPORTSMOLE': 'SportsMole', 'TRIVELA': 'Trivela',
   'UMDOISESPORTES': 'UmDoisEsportes', 'AFRIKFOOTFR': 'Afrik-Foot (FR)',
   'AFRIKFOOTZA': 'Afrik-Foot (ZA)', 'AFRIKFOOTNG': 'Afrik-Foot (NG)',
   'FOOTBALLWHISPERS': 'Football Whispers', 'FOOTBALLGROUNDGUIDE': 'Football Ground Guide',
@@ -3750,7 +3751,7 @@ const TAB_LABELS = {
 
 // Language mapping for Evergreen autocomplete
 const SITE_LANG_MAP = {
-  'TOPMERCATO': 'fr', 'SPORTSMOLE': 'en', 'TRIVELA': 'pt-BR', 'UMDOISESPORTES': 'pt-BR',
+  'TOPMERCATO': 'fr', 'DAILYMERCATO': 'fr', 'SPORTSMOLE': 'en', 'TRIVELA': 'pt-BR', 'UMDOISESPORTES': 'pt-BR',
   'AFRIKFOOTFR': 'fr', 'AFRIKFOOTZA': 'en', 'AFRIKFOOTNG': 'en',
   'FOOTBALLWHISPERS': 'en', 'FOOTBALLGROUNDGUIDE': 'en', 'MRFIXITSTIPS': 'en',
   'SOLOBASKET': 'es', 'ALAIRELIBRE': 'es',
@@ -3760,7 +3761,7 @@ const SITE_LANG_MAP = {
 // Sites whose headlines may tease the targeted player instead of naming him (network line).
 // Stadium guides and betting tips must name their subject (stadium, teams) in the title
 const SITE_TEASING = {
-  TOPMERCATO: true, SPORTSMOLE: true, FOOTBALLWHISPERS: true, TRIVELA: true, UMDOISESPORTES: true,
+  TOPMERCATO: true, DAILYMERCATO: true, SPORTSMOLE: true, FOOTBALLWHISPERS: true, TRIVELA: true, UMDOISESPORTES: true,
   AFRIKFOOTFR: true, AFRIKFOOTZA: true, AFRIKFOOTNG: true, ALAIRELIBRE: true,
   BASKETUSA: true, BASKETEUROPE: true, SOLOBASKET: true, LAKERSBRASIL: true,
   FOOTBALLGROUNDGUIDE: false, MRFIXITSTIPS: false,
@@ -3770,6 +3771,7 @@ function siteUsesTeasing(site) { return !site || SITE_TEASING[site] !== false; }
 
 const SITE_AUTHORITY = {
   'TOPMERCATO': { desc: 'French football news, transfers and analysis', topics: 'Ligue 1, transfer rumors, mercato, player signings, contract news, French football, Champions League, World Cup, player rankings, football history, tactical analysis' },
+  'DAILYMERCATO': { desc: 'French football transfer news (mercato) and Ligue 1 news, written in French', topics: 'mercato, transfer rumors, official transfers, Ligue 1 clubs (OM, PSG, OL, Lens, Monaco, ASSE, Nice, Lille), contract extensions, loans, January transfer window, Premier League, Liga, Serie A, Champions League, coaches and sporting directors, club finances and DNCG' },
   'SPORTSMOLE': { desc: 'UK sports news, previews and predictions', topics: 'Premier League, Champions League, EFL, international football, match predictions, team news, rugby, tennis, F1, cricket, Olympics, World Cup, player stats, football records, transfer news' },
   'TRIVELA': { desc: 'Brazilian football news, analysis and culture', topics: 'Brasileirao, Copa do Brasil, Libertadores, Selecao Brasileira, European football, player analysis, football history, World Cup, tactical analysis, South American football, player rankings' },
   'UMDOISESPORTES': { desc: 'Brazilian multi-sport news — every topic MUST connect to Brazilian athletes, teams or audience', topics: 'Brasileirao, Copa do Brasil, Libertadores, Selecao Brasileira, Brazilian players abroad, NBA Brazilian players, UFC Brazilian fighters, Olympic Brazilian athletes, Paranaense clubs, World Cup with Brazil angle, combat sports with Brazilian fighters, tennis with Brazilian players' },
@@ -5680,7 +5682,9 @@ function extractTitle(doc) {
 
 // ========== SHARED DOM SELECTORS ==========
 const CONTENT_KW = ['entry-content','post-content','article-content','article-body','post-body','td-post-content','single-content','content-single','the-content','main-content','story-body','c-article__body','post_content','article__content','nota-content','nota__content','contenido','news-content','field-body','text-content'];
-const EXCLUDE_KW = ['related','sidebar','widget','nav','footer','header','comment','newsletter','social','share','author-bio','breadcrumb','menu','advertisement','publicite','pub','cookie','popup','modal','notification','banner','alert','search','tags','meta','pagination','pager','next','prev','similar','recommended','also-read','a-lire','sur-le-meme','plus-sur'];
+const EXCLUDE_KW = ['related','sidebar','widget','nav','footer','header','comment','newsletter','social','share','author-bio','breadcrumb','menu','advertisement','publicite','pub','cookie','popup','modal','notification','banner','alert','search','tags','meta','pagination','pager','next','prev','similar','recommended','also-read','a-lire','sur-le-meme','plus-sur',
+  // DailyMercato: breadcrumb, « L'essentiel » box, table of contents, stats/poll/price widgets, « Dans cet article » list
+  'crumbs','key-points','nsn-toc','fw-en','nsn-fv','dmp-topics'];
 
 // ========== BODY TEXT EXTRACTION ==========
 function extractBodyText(doc) {
@@ -6417,7 +6421,7 @@ const DEFAULT_FLUFF_CATEGORIES = ['delete-test','any-team','obviousness','hope-w
 // any em dash are flagged on their own, found by the page itself
 const STRICT_FLUFF_SITES = {
   SPORTSMOLE: 'en', AFRIKFOOTZA: 'en', AFRIKFOOTNG: 'en', FOOTBALLGROUNDGUIDE: 'en', FOOTBALLWHISPERS: 'en', MRFIXITSTIPS: 'en',
-  TOPMERCATO: 'fr', AFRIKFOOTFR: 'fr', BASKETUSA: 'fr', BASKETEUROPE: 'fr',
+  TOPMERCATO: 'fr', DAILYMERCATO: 'fr', AFRIKFOOTFR: 'fr', BASKETUSA: 'fr', BASKETEUROPE: 'fr',
 };
 // Unicode word boundaries: \b ignores accented letters ("s'annonce électrique")
 const frPhrase = src => new RegExp(`(?<![\\p{L}\\d])(?:${src})(?![\\p{L}\\d])`, 'iu');
@@ -8711,6 +8715,7 @@ function decodeEntities(s) { const el = document.createElement('textarea'); el.i
 // Run from browser console: testAllSites()
 const TEST_URLS = {
   TOPMERCATO: 'https://www.topmercato.com/transferts/olise-s-enflamme-au-bayern-l-essentiel-du-mercato-1093069',
+  DAILYMERCATO: 'https://www.dailymercato.com/news/mercato-om-hojbjerg-juventus-pret-achat-conditionnel-15-millions-mckennie',
   SPORTSMOLE: 'https://www.sportsmole.co.uk/football/man-utd/preview/preview-manchester-united-vs-tottenham-hotspur-prediction-team-news-lineups_584893.html',
   TRIVELA: 'https://trivela.com.br/futebol-internacional/barcelona-enfrenta-bayern-de-munique-pela-champions-league/',
   UMDOISESPORTES: 'https://www.umdoisesportes.com.br/coritiba/coritiba-anuncia-contratacao-nicolas-fonseca/',
