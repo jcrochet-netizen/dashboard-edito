@@ -3885,16 +3885,36 @@ function switchMode(mode) {
 // ========== UI HELPERS ==========
 function toggleCard(header) { header.classList.toggle('collapsed'); }
 
-// Scrolls to a part of the results (opening its card if collapsed); for spelling, lands on the first error
+// Scrolls to a part of the results (opening its card if collapsed); for spelling, lands on the first error,
+// for quality on the first issue still open
 function jumpToSection(id) {
   const target = document.getElementById(id);
   if (!target) return;
   target.closest('.card')?.querySelector('.card-header.collapsed')?.classList.remove('collapsed');
-  const el = target.querySelector('.spell-error-row') || target;
+  const el = (id === 'qualityBody' && firstQualityIssue(target)) || target.querySelector('.spell-error-row') || target;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.classList.remove('jump-flash');
   void el.offsetWidth; // restart the highlight when clicked twice
   el.classList.add('jump-flash');
+}
+
+// Quality: the first issue nobody marked as "not a problem", in reading order. For padding, the sentence
+// in the article text (where to fix it), with its review card selected; otherwise the first repeated fact
+function firstQualityIssue(body) {
+  const fluff = _qualityView?.fluff || [];
+  const open = i => fluff[i] && !fluff[i]._dismissed;
+  const hl = [...body.querySelectorAll('.fluff-hl')].find(h => open(Number(h.dataset.fluffIdx)));
+  const idx = hl ? Number(hl.dataset.fluffIdx) : fluff.findIndex((f, i) => open(i));
+  if (idx >= 0) {
+    body.querySelectorAll('.fluff-hl.active, .fluff-review-card.active').forEach(e => e.classList.remove('active'));
+    const card = body.querySelector(`.fluff-review-card[data-fluff-idx="${idx}"]`);
+    hl?.classList.add('active');
+    // The review panel scrolls on its own; the page then centres on the sentence
+    if (card) { card.classList.add('active'); card.scrollIntoView({ block: 'nearest' }); }
+    return hl || card;
+  }
+  const rf = (_qualityView?.q?.article_identity?.repeated_facts || []).findIndex(f => !f._dismissed);
+  return rf >= 0 ? document.getElementById('rf_' + rf) : null;
 }
 
 function setProgress(pct, label) {
@@ -7733,7 +7753,7 @@ function renderResults(url, title, discoverChecks, contentChecks, aiResult, spel
   if (qualityResult) {
     const active = activeQualityIssues(qualityResult);
     const qIssues = active.fluff.length + active.repeated.length;
-    kpis.push({ id: 'kpiQuality', label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red' });
+    kpis.push({ id: 'kpiQuality', label: t('kpi_quality'), value: qIssues, color: qIssues===0?'green':qIssues<=2?'amber':'red', target: qIssues ? 'qualityBody' : null });
   }
   // target: id of the section the card scrolls to (fixed ids from this file, safe in the attribute)
   document.getElementById('kpiRow').innerHTML = kpis.map(k => {
@@ -7890,9 +7910,9 @@ function qualitySummaryItems(q) {
   if (!q) return [];
   const { high, medium, repeated } = activeQualityIssues(q);
   const items = [];
-  if (high) items.push({ level: 'fix', sec: 'quality', text: t('summary_fluff_high', { n: high }) });
-  if (medium) items.push({ level: 'improve', sec: 'quality', text: t('summary_fluff_medium', { n: medium }) });
-  if (repeated.length) items.push({ level: 'improve', sec: 'quality', text: t('summary_repeated', { n: repeated.length }) });
+  if (high) items.push({ level: 'fix', sec: 'quality', target: 'qualityBody', text: t('summary_fluff_high', { n: high }) });
+  if (medium) items.push({ level: 'improve', sec: 'quality', target: 'qualityBody', text: t('summary_fluff_medium', { n: medium }) });
+  if (repeated.length) items.push({ level: 'improve', sec: 'quality', target: 'qualityBody', text: t('summary_repeated', { n: repeated.length }) });
   return items;
 }
 
