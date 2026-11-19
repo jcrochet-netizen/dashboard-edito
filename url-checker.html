@@ -3416,6 +3416,8 @@ const DEFAULT_DISCOVER_SHEET_10D = _ok ? 'https://docs.google.com/spreadsheets/d
 const DEFAULT_SEARCH_SHEET = _ok ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_xBBpbRcqRO8du0wSfLvPXms6LBBFyaqJX0KNwAARqV-iulmwz8PHqldYfbG9vffCday53ZrrsbNb/pubhtml' : '';
 // ========== FLUFF FEEDBACK LEARNING ==========
 let _feedbackCache = null;
+// Site of the analysis on screen (the site list's choice, or the one read from the URL): a draft has no URL
+let _analysisSite = null;
 let _feedbackCacheTime = 0;
 const FEEDBACK_CACHE_TTL = 5 * 60 * 1000; // 5 min cache
 
@@ -3438,6 +3440,7 @@ async function fetchFluffFeedback() {
   try {
     const raw = JSON.parse(localStorage.getItem('media_dashboard_fluff_feedback') || '[]');
     local = raw.map(e => ({
+      url: e.url || '',
       domain: e.domain || '',
       quote: e.quote || '',
       tests_failed: e.tests_failed || '',
@@ -3468,11 +3471,52 @@ function dismissedTexts(feedback, kind) {
   return new Set((feedback || []).filter(r => feedbackKind(r) === kind && feedbackIsNo(r)).map(r => normFeedbackText(r.quote)));
 }
 
+// Site of a feedback row: from its URL (afrik-foot.com hosts FR, ZA and NG, told apart by the path),
+// else the Domain column, which holds a site code for drafts and a hostname for older rows
+function feedbackSite(r) {
+  const d = String(r.domain || '').trim();
+  if (SITE_LANG_MAP[d]) return d;
+  return resolveTab(String(r.url || '')) || DOMAIN_TAB_MAP[d.replace(/^www\./, '')] || '';
+}
+
+// Same article: its URL without query, fragment or trailing slash; a draft is known by its title
+function articleKey(url, title) {
+  const u = String(url || '');
+  if (u.startsWith('draft: ')) return u.length > 7 ? 'draft: ' + normFeedbackText(u.slice(7)) : '';
+  try { const x = new URL(u); return (x.hostname.replace(/^www\./, '') + x.pathname).replace(/\/+$/, '').toLowerCase(); }
+  catch(e) { return title ? 'draft: ' + normFeedbackText(title) : ''; }
+}
+
+// Within one article, GPT words the same issue differently from one analysis to the next ("13e de Ligue 1
+// avec 10 points", then "Strasbourg pointe à la 13e place de Ligue 1 avec 10 points"): two texts match when
+// most words of the shorter one are in the longer one
+function sameIssue(a, b) {
+  const words = x => new Set(String(x || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').filter(Boolean));
+  const wa = words(a), wb = words(b);
+  const [small, big] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
+  if (!small.size) return false;
+  const common = [...small].filter(w => big.has(w)).length;
+  return small.size < 3 ? common === small.size && small.size === big.size : common / small.size >= 0.75;
+}
+
+// What the team marked as not a problem: the exact text everywhere, and close wordings in the same article
+function hiddenIssues(feedback, kind, url, title) {
+  const no = (feedback || []).filter(r => feedbackKind(r) === kind && feedbackIsNo(r));
+  const exact = new Set(no.map(r => normFeedbackText(r.quote)));
+  const key = articleKey(url, title);
+  const here = key ? no.filter(r => articleKey(r.url) === key).map(r => r.quote) : [];
+  return text => exact.has(normFeedbackText(text)) || here.some(q => sameIssue(q, text));
+}
+
 // Saves a verdict in this browser and in the team sheet (fire-and-forget)
 function sendFeedback({ quote, tests_failed, verdict, action }) {
-  const articleUrl = document.getElementById('resultUrl')?.textContent || '';
-  let domain = '';
-  try { domain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : ''; } catch(e) {}
+  let articleUrl = document.getElementById('resultUrl')?.textContent || '';
+  // A draft is known by its title (its URL field only says "(pasted HTML)")
+  if (!/^https?:\/\//i.test(articleUrl)) articleUrl = 'draft: ' + (document.getElementById('resultTitle')?.textContent || '').trim();
+  // A draft has no URL: its site code goes in the Domain column so the row still belongs to a site
+  let domain = _analysisSite || '';
+  // "draft: …" parses as a URL with an empty host: only http(s) addresses give a domain
+  if (/^https?:\/\//i.test(articleUrl)) try { domain = new URL(articleUrl).hostname.replace('www.',''); } catch(e) {}
   let reviewer = document.getElementById('reviewerSelect')?.value || '';
   try { if (!reviewer) reviewer = localStorage.getItem('media_dashboard_reviewer') || ''; } catch(e) {}
   try {
@@ -3495,64 +3539,69 @@ function sendFeedback({ quote, tests_failed, verdict, action }) {
   _feedbackCache = null;
 }
 
-function buildCalibrationBlock(feedback, currentDomain) {
-  const repeatedNo = (feedback || []).filter(r => feedbackKind(r) === FEEDBACK_REPEATED && feedbackIsNo(r));
-  feedback = (feedback || []).filter(r => feedbackKind(r) === 'fluff');
-  if (feedback.length === 0 && repeatedNo.length === 0) return '';
-  // Aggregate: per domain, per test → confirm vs dismiss counts
+// The analysed site's own verdicts come first; other sites count only when they share its language, since
+// each language has its own rules (English checklist, French checklist, Google rater rules for PT/ES)
+function buildCalibrationBlock(feedback, currentSite) {
+  const lang = currentSite ? SITE_LANG_MAP[currentSite] : null;
+  const rows = (feedback || []).map(r => ({ ...r, _site: feedbackSite(r) }))
+    .filter(r => !lang || SITE_LANG_MAP[r._site] === lang);
+  // Most recent first, the analysed site's rows before the others
+  const examples = (list, n) => {
+    const recent = list.slice().reverse();
+    return recent.filter(r => r._site === currentSite).concat(recent.filter(r => r._site !== currentSite)).slice(0, n)
+      .map(r => `"${String(r.quote || '').substring(0, 120)}"`);
+  };
+  const repeatedNo = rows.filter(r => feedbackKind(r) === FEEDBACK_REPEATED && feedbackIsNo(r));
+  const fluffRows = rows.filter(r => feedbackKind(r) === 'fluff');
+  if (fluffRows.length === 0 && repeatedNo.length === 0) return '';
+
+  // Per site, per test → confirm vs dismiss counts
   const stats = {};
-  feedback.forEach(row => {
-    const d = row.domain || 'unknown';
-    const verdict = (row.verdict || '').toLowerCase();
-    const tests = (row.tests_failed || '').split(',').map(s => s.trim()).filter(Boolean);
-    tests.forEach(test => {
+  fluffRows.forEach(row => {
+    const d = row._site || 'unknown';
+    const yes = (row.verdict || '').toLowerCase().includes('yes');
+    String(row.tests_failed || '').split(',').map(x => x.trim()).filter(Boolean).forEach(test => {
       if (!stats[d]) stats[d] = {};
       if (!stats[d][test]) stats[d][test] = { confirmed: 0, dismissed: 0 };
-      if (verdict.includes('yes')) stats[d][test].confirmed++;
-      else stats[d][test].dismissed++;
+      stats[d][test][yes ? 'confirmed' : 'dismissed']++;
     });
   });
 
   const lines = [];
-  // Global patterns: tests dismissed >60% of the time across all domains
+  // Tests dismissed more than 60% of the time on the sites that share the rules
   const globalTests = {};
-  Object.values(stats).forEach(domainStats => {
-    Object.entries(domainStats).forEach(([test, counts]) => {
+  Object.values(stats).forEach(siteStats => {
+    Object.entries(siteStats).forEach(([test, c]) => {
       if (!globalTests[test]) globalTests[test] = { confirmed: 0, dismissed: 0 };
-      globalTests[test].confirmed += counts.confirmed;
-      globalTests[test].dismissed += counts.dismissed;
+      globalTests[test].confirmed += c.confirmed;
+      globalTests[test].dismissed += c.dismissed;
     });
   });
   const oftenDismissed = Object.entries(globalTests)
     .filter(([_, c]) => c.dismissed + c.confirmed >= 3 && c.dismissed / (c.dismissed + c.confirmed) > 0.6)
-    .map(([test, c]) => `${test} (dismissed ${Math.round(c.dismissed/(c.dismissed+c.confirmed)*100)}%)`)
+    .map(([test, c]) => `${test} (dismissed ${Math.round(c.dismissed / (c.dismissed + c.confirmed) * 100)}%)`)
     .join(', ');
-  if (oftenDismissed) lines.push(`- Tests often dismissed by editors across all domains: ${oftenDismissed}. Be more conservative with these.`);
+  if (oftenDismissed) lines.push(`- Tests often dismissed by editors${lang ? ' on the sites in this language' : ''}: ${oftenDismissed}. Be more conservative with these.`);
 
-  // Domain-specific patterns
-  if (currentDomain && stats[currentDomain]) {
-    const domainDismissed = Object.entries(stats[currentDomain])
+  if (currentSite && stats[currentSite]) {
+    const siteDismissed = Object.entries(stats[currentSite])
       .filter(([_, c]) => c.dismissed + c.confirmed >= 2 && c.dismissed / (c.dismissed + c.confirmed) > 0.5)
-      .map(([test, c]) => `${test} (${c.dismissed}/${c.dismissed+c.confirmed} dismissed)`)
+      .map(([test, c]) => `${test} (${c.dismissed}/${c.dismissed + c.confirmed} dismissed)`)
       .join(', ');
-    if (domainDismissed) lines.push(`- On ${currentDomain} specifically, these tests are often dismissed: ${domainDismissed}. Be extra conservative on this domain for these tests.`);
+    if (siteDismissed) lines.push(`- On this site specifically, these tests are often dismissed: ${siteDismissed}. Be extra conservative on this site for these tests.`);
   }
 
-  // Dismissed quotes: show up to 5 most recent dismissed sentences as "do not flag similar"
-  const dismissedQuotes = feedback
-    .filter(r => (r.verdict||'').toLowerCase().includes('no'))
-    .slice(-10)
-    .map(r => `"${(r.quote||'').substring(0, 120)}"`);
+  const dismissedQuotes = examples(fluffRows.filter(r => feedbackIsNo(r)), 10);
   if (dismissedQuotes.length > 0) {
     lines.push(`- Examples of sentences editors said are NOT fluff (do not flag similar patterns):\n  ${dismissedQuotes.join('\n  ')}`);
   }
-
-  if (repeatedNo.length > 0) {
-    lines.push(`- Facts editors said were NOT repeated (stated once, or each mention adds something new). Before flagging a repeated fact, find both sentences in the ARTICLE BODY:\n  ${repeatedNo.slice(-5).map(r => `"${String(r.quote || '').substring(0, 120)}"`).join('\n  ')}`);
+  const repeatedQuotes = examples(repeatedNo, 5);
+  if (repeatedQuotes.length > 0) {
+    lines.push(`- Facts editors said were NOT repeated (stated once, or each mention adds something new). Before flagging a repeated fact, find both sentences in the ARTICLE BODY:\n  ${repeatedQuotes.join('\n  ')}`);
   }
 
   if (lines.length === 0) return '';
-  return '\n\nCALIBRATION FROM EDITOR FEEDBACK (' + (feedback.length + repeatedNo.length) + ' reviews):\n' + lines.join('\n');
+  return '\n\nCALIBRATION FROM EDITOR FEEDBACK (' + (fluffRows.length + repeatedNo.length) + ' reviews):\n' + lines.join('\n');
 }
 
 // ========== OPENAI PROXY ==========
@@ -3955,6 +4004,7 @@ async function startAnalysis(mode) {
     // Read selected site from dropdown
     const siteSelectId = mode === 'url' ? 'urlSiteSelect' : 'draftSiteSelect';
     const selectedSite = document.getElementById(siteSelectId)?.value || null;
+    _analysisSite = selectedSite || resolveTab(url) || null;
 
     // Read tick-case selections
     const prefix = mode === 'url' ? 'urlTick' : 'draftTick';
@@ -6537,10 +6587,11 @@ async function runQualityCheck(title, bodyText, articleUrl, site) {
 
   // Fetch feedback for continuous learning
   let calibration = '';
+  // A draft has no URL: the site comes from the site list. Parsing "(pasted HTML)" as a URL used to throw
+  // here and drafts got no calibration at all
   try {
-    const currentDomain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : '';
     const feedback = await fetchFluffFeedback();
-    calibration = buildCalibrationBlock(feedback, currentDomain);
+    calibration = buildCalibrationBlock(feedback, site || resolveTab(articleUrl));
   } catch(e) {}
 
   // The English sites apply their editors' writing checklist; the other sites keep the Google rater rules
@@ -6636,9 +6687,10 @@ ${fluffRules}` + calibration },
   }
   // What an editor already marked as not a problem stays hidden when an article is analysed again
   const feedback = await fetchFluffFeedback().catch(() => []);
-  const noFluff = dismissedTexts(feedback, 'fluff'), noRepeated = dismissedTexts(feedback, FEEDBACK_REPEATED);
-  merged.fluff = merged.fluff.filter(f => !noFluff.has(normFeedbackText(f.quote)));
-  merged.article_identity.repeated_facts = merged.article_identity.repeated_facts.filter(f => !noRepeated.has(normFeedbackText(f.fact)));
+  const hideFluff = hiddenIssues(feedback, 'fluff', articleUrl, title);
+  const hideRepeated = hiddenIssues(feedback, FEEDBACK_REPEATED, articleUrl, title);
+  merged.fluff = merged.fluff.filter(f => !hideFluff(f.quote));
+  merged.article_identity.repeated_facts = merged.article_identity.repeated_facts.filter(f => !hideRepeated(f.fact));
   return merged;
 }
 
