@@ -6315,65 +6315,10 @@ Respond ONLY via the spellcheck_report tool.`;
   } catch(e) { return null; }
 }
 
-// ========== CONTENT QUALITY CHECK (AI) ==========
-// bodyText holds one paragraph per line (extractBodyText joins p/li/h2... with "\n"): splitting on blank lines
-// gave a single "paragraph", so the whole article was sent as the lead AND as the body and every fact looked
-// repeated. The lead is the first real paragraph; byline and date lines before it are short
-function splitLeadAndBody(bodyText) {
-  const lines = bodyText.split('\n').map(l => l.trim()).filter(l => /\p{L}/u.test(l));
-  const i = lines.findIndex(l => l.length >= 80);
-  return i < 0 ? { lead: lines[0] || '', body: lines.slice(1) } : { lead: lines[i], body: lines.slice(i + 1) };
-}
-
-async function runQualityCheck(title, bodyText, articleUrl, site) {
-  const topicLang = siteLanguageName(site) || 'the language of the article';
-  const { lead: chapo, body } = splitLeadAndBody(bodyText);
-  // Paragraphs after the lead, numbered so the model gives reliable §-positions (up to ~4,000 words)
-  const numbered = [];
-  let wordCount = 0;
-  for (const [i, para] of body.entries()) {
-    wordCount += para.split(/\s+/).length;
-    if (wordCount > 4000) break;
-    numbered.push(`[§${i + 1}] ${para}`);
-  }
-  const excerpt = numbered.join('\n\n');
-
-  // Fetch feedback for continuous learning
-  let calibration = '';
-  try {
-    const currentDomain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : '';
-    const feedback = await fetchFluffFeedback();
-    calibration = buildCalibrationBlock(feedback, currentDomain);
-  } catch(e) {}
-
-  // GPT does not judge borderline sentences the same way twice (same article: 0, 2 then 3 fluff items).
-  // Three passes with fixed seeds run in parallel, and only what at least two of them flag is kept
-  const request = seed => ({
-      model: OPENAI_MODEL,
-      messages: [
-        { role: 'system', content: `You are a Google Search quality rater. Your ONLY job is to flag content that would directly damage the article in a Google Discover update, Search update, or spam update. You are NOT an editorial coach. Standard sports journalism writing is fine — even if it is not perfect prose.
-
-STEP 1 — ARTICLE IDENTITY (do this BEFORE any evaluation):
-Before evaluating anything, read the TITLE carefully and determine:
-- article_topic: What is this article actually about? Derive the real topic from the title. Examples: "Biggest football attendances in Europe yesterday" → topic is "attendance figures roundup", NOT a match report. "Revisa una selección de los mejores chistes futboleros" → topic is "football jokes compilation". "Preview: Man Utd vs Tottenham" → topic is "match preview". The title defines the topic. Do NOT let the first event or name mentioned in the body redefine the topic.
-- article_type: What kind of article is it? One of: match-report, preview, transfer-news, rankings/list, roundup/compilation, analysis, interview, player-profile, opinion, news, other.
-- key_facts: List the 3-5 most important specific facts in the article (numbers, scores, names+actions, stats). You will use these to check for cross-paragraph repetition.
-
-ALL your evaluation (fluff detection, repetition) must be through the lens of this identified topic. If the title says "biggest attendances" and the article mentions Portugal vs Norway, the article topic is attendances — Portugal vs Norway is just one data point.
-
-STEP 2 — CROSS-PARAGRAPH FACT REPETITION:
-After identifying key_facts, scan the article for the same specific fact (same number, same stat, same score, same name+action) appearing in 2+ SEPARATE paragraphs.
-CRITICAL DISTINCTION: A fact mentioned again WITH new context, analysis, or additional details is NOT repetition — that is normal progressive elaboration. Only flag when the EXACT same information is restated with NO added value (pure redundancy, padding word count).
-Example NOT repetition: "Chile won 2-0" in intro, then later "Chile's 2-0 victory was sealed by goals from Gutiérrez and Pizarro in the second half" — the second adds new information.
-Example IS repetition: "Chile won 2-0" in paragraph 3, then "Chile defeated Mexico by a 2-0 scoreline" in paragraph 8 with nothing new added.
-For each repeated fact, report WHERE it appears using the "positions" array with SPECIFIC paragraph numbers: "§3", "§7", "§12". Count paragraphs from 1 (after the chapô). This lets editors jump directly to the right spot.
-Rules:
-- The chapô/lead paragraph is EXEMPT — it is allowed to state facts that appear later.
-- A table or list that organizes data is NOT repetition of itself — but if the prose ALSO states the same numbers from the table with no new context, that IS repetition.
-- If the same specific number or stat appears in 3+ separate locations (excluding chapô) with no added value each time, flag it as "high" severity repetition.
-- If a later mention ADDS context, analysis, a quote, or new details around the same fact, do NOT flag it — that is normal editorial writing.
-
-FLAG ONLY content that Google would classify as:
+// ========== QUALITY RULES ==========
+// Default rules (every site except the ones below): flag only what a Google quality rater would penalise
+const DEFAULT_FLUFF_INTRO = `You are a Google Search quality rater. Your ONLY job is to flag content that would directly damage the article in a Google Discover update, Search update, or spam update. You are NOT an editorial coach. Standard sports journalism writing is fine — even if it is not perfect prose.`;
+const DEFAULT_FLUFF_RULES = `FLAG ONLY content that Google would classify as:
 - Auto-generated or AI-generated filler (template sentences that could appear in any article with names swapped)
 - Thin content signals (paragraphs that exist only to inflate word count with no information)
 - Spam patterns (circular repetition of the same point 3+ times, keyword stuffing disguised as sentences)
@@ -6414,7 +6359,151 @@ Apply these tests. A sentence must fail at least 2 tests AND be the kind of cont
 - REPETITION TEST: Does it repeat a specific fact (number, stat, score) already stated in a different paragraph? Or does it restate the same point already made, just with different words?
 - EVIDENCE-FREE TEST: Does it make a judgment without giving any evidence?
 
-For each padding instance: the exact quote, a category (delete-test, any-team, context-free, repetition, evidence-free), the severity (high/medium), which tests it fails, and a suggested rewrite in the same language. If the sentence should just be deleted, say "delete".` + calibration },
+For each padding instance: the exact quote, a category (delete-test, any-team, context-free, repetition, evidence-free), the severity (high/medium), which tests it fails, and a suggested rewrite in the same language. If the sentence should just be deleted, say "delete".`;
+const DEFAULT_FLUFF_CATEGORIES = ['delete-test','any-team','obviousness','hope-want','restatement','generic-consequence','future-uncertainty','importance-no-explanation','momentum','determination','intrigue','challenge','opportunity','objective','context-free','evidence-free','repetition'];
+
+// English sites: the writing checklist of their editors. A sentence is flagged when it fails at least two
+// of the 17 tests; the listed phrases and any em dash are flagged on their own
+const STRICT_FLUFF_SITES = new Set(['SPORTSMOLE', 'AFRIKFOOTZA', 'AFRIKFOOTNG', 'FOOTBALLGROUNDGUIDE', 'FOOTBALLWHISPERS']);
+const STRICT_FLUFF_TESTS = [
+  ['delete-test', 'Delete: if you deleted the sentence, would the reader lose almost no fact, argument, evidence or insight?'],
+  ['any-team', 'Any-team/any-player: would the sentence still work for almost any team or player once you swap the names?'],
+  ['obviousness', 'Obviousness: does it only state a consequence anyone could predict?'],
+  ['hope-want', 'Hope/want: does it only say someone "will hope", "will want", "will look to" or "will be eager" to do something obvious?'],
+  ['restatement', 'Restatement: does it just put the previous stat or fact into words without adding anything?'],
+  ['generic-consequence', 'Generic-consequence: is it a fact followed by a predictable conclusion that adds no new information?'],
+  ['future-uncertainty', 'Future-uncertainty: does it only say nobody knows what will happen ("only time will tell", "remains to be seen")?'],
+  ['importance-no-explanation', 'Importance-without-explanation: does it call something "crucial", "key" or "significant" without saying why or how?'],
+  ['momentum', 'Momentum: does it use "momentum", "build on", "bounce back", "strong start" and similar with no supporting detail?'],
+  ['determination', 'Determination: does it make up an obvious mental state ("will be determined to...")?'],
+  ['intrigue', 'Intrigue: does it tell the reader something is interesting instead of giving the interesting information ("a fascinating contest", "promises to be...")?'],
+  ['challenge', 'Challenge: does it just say a hard opponent will be hard, with no evidence?'],
+  ['context-free', 'Context-free: could the sentence have been written without any research into this subject?'],
+  ['evidence-free', 'Evidence-free judgement: does it give an assessment ("has been impressive") with no fact behind it?'],
+  ['word-count', 'Word-count: is a long sentence saying something that would fit in a fifth of the words?'],
+  ['paragraph-ending', 'Paragraph-ending: is it a generic summary added only because the paragraph seemed to need a close?'],
+  ['ai-summary', 'AI-summary: does it repeat information the reader has just read?'],
+];
+const STRICT_FLUFF_INTRO = 'You are the sub-editor of an English-language sports site. You apply the site\'s writing checklist to the article: you find padding sentences, and you check for facts repeated across paragraphs.';
+const STRICT_FLUFF_RULES = `STEP 3 — PADDING (the site's writing checklist):
+Judge every sentence of the ARTICLE BODY against these 17 tests:
+${STRICT_FLUFF_TESTS.map(([id, test], i) => `${i + 1}. [${id}] ${test}`).join('\n')}
+
+TWO-TEST RULE: flag a sentence only when it clearly fails at least TWO of these tests. If you are unsure whether a test fails, it does not.
+
+FLAGGED ON THEIR OWN (one is enough, outside the two-test rule), close variants included:
+"only time will tell", "a clash of titans", "a fascinating contest", "in what promises to be", "a thrilling encounter", "it remains to be seen", and "this is not just X, it is Y" constructions. Use the category "banned-phrase" for them.
+Em dashes are detected by the tool itself: do not report a sentence only because it contains one.
+
+NEVER FLAG: the chapô, headings, direct quotes (words between quotation marks said by someone: the writer cannot rewrite them), author bios.
+
+For each flagged sentence:
+- quote: the exact sentence, word for word.
+- category: the main test it fails (or "banned-phrase").
+- tests_failed: every test it fails, by its name in brackets above, comma-separated (e.g. "any-team, hope-want").
+- severity: "high" if it fails 3 or more tests or is pure filler, "medium" if it fails exactly 2 tests or contains a listed phrase.
+- reason: start by answering this question for the writer: could this exact sentence, with only the names changed, appear in 100 other articles about this sport, and if so, does it need to exist? Then say what is missing.
+- suggestion: a rewrite that adds a specific fact, stat or comparison, or "Cut entirely". Use only facts that appear in the article. If none fits, put the kind of fact to add in square brackets, e.g. "[their record in the last five meetings]". Never invent a fact.`;
+
+// Flagged on their own, without asking GPT: the page finds them the same way every time
+const STRICT_FLUFF_PHRASES = [
+  ['only time will tell', /\bonly time will tell\b/i],
+  ['a clash of titans', /\bclash of (?:the )?titans\b/i],
+  ['a fascinating contest', /\bfascinating contest\b/i],
+  ['in what promises to be', /\bin what promises to be\b/i],
+  ['a thrilling encounter', /\bthrilling encounter\b/i],
+  ['it remains to be seen', /\bremains to be seen\b/i],
+  ['not just X, it is Y', /\bnot (?:just|only|merely|simply)\b[^.!?]{1,100}?[,;:—–]\s*(?:it|this|that|they|he|she)(?:\s+(?:is|are|was|were)\b|['’](?:s|re)\b)/i],
+];
+function strictPhraseFlags(bodyText) {
+  const items = [];
+  for (const line of bodyText.split('\n')) {
+    for (const raw of line.match(/[^.!?]+(?:[.!?]+["'’”)\]]*|$)/g) || []) {
+      const quote = raw.trim();
+      if (!quote) continue;
+      const phrases = STRICT_FLUFF_PHRASES.filter(([, re]) => re.test(quote)).map(([label]) => label);
+      const dash = quote.includes('—');
+      if (!phrases.length && !dash) continue;
+      items.push({
+        quote,
+        category: phrases.length ? 'banned-phrase' : 'em-dash',
+        severity: 'medium',
+        tests_failed: phrases.map(p => `phrase "${p}"`).concat(dash ? ['em dash'] : []).join(', '),
+        reason: [phrases.length ? 'Listed phrase: it could close 100 other articles about this sport and tells the reader nothing.' : '',
+          dash ? 'The house style allows no em dash.' : ''].filter(Boolean).join(' '),
+        suggestion: [phrases.length ? 'Cut the phrase, or replace it with a specific fact from the article.' : '',
+          dash ? 'Replace the em dash with a full stop, a comma or brackets.' : ''].filter(Boolean).join(' '),
+      });
+    }
+  }
+  return items;
+}
+
+// ========== CONTENT QUALITY CHECK (AI) ==========
+// bodyText holds one paragraph per line (extractBodyText joins p/li/h2... with "\n"): splitting on blank lines
+// gave a single "paragraph", so the whole article was sent as the lead AND as the body and every fact looked
+// repeated. The lead is the first real paragraph; byline and date lines before it are short
+function splitLeadAndBody(bodyText) {
+  const lines = bodyText.split('\n').map(l => l.trim()).filter(l => /\p{L}/u.test(l));
+  const i = lines.findIndex(l => l.length >= 80);
+  return i < 0 ? { lead: lines[0] || '', body: lines.slice(1) } : { lead: lines[i], body: lines.slice(i + 1) };
+}
+
+async function runQualityCheck(title, bodyText, articleUrl, site) {
+  const topicLang = siteLanguageName(site) || 'the language of the article';
+  const { lead: chapo, body } = splitLeadAndBody(bodyText);
+  // Paragraphs after the lead, numbered so the model gives reliable §-positions (up to ~4,000 words)
+  const numbered = [];
+  let wordCount = 0;
+  for (const [i, para] of body.entries()) {
+    wordCount += para.split(/\s+/).length;
+    if (wordCount > 4000) break;
+    numbered.push(`[§${i + 1}] ${para}`);
+  }
+  const excerpt = numbered.join('\n\n');
+
+  // Fetch feedback for continuous learning
+  let calibration = '';
+  try {
+    const currentDomain = articleUrl ? new URL(articleUrl).hostname.replace('www.','') : '';
+    const feedback = await fetchFluffFeedback();
+    calibration = buildCalibrationBlock(feedback, currentDomain);
+  } catch(e) {}
+
+  // The English sites apply their editors' writing checklist; the other sites keep the Google rater rules
+  const strict = STRICT_FLUFF_SITES.has(site);
+  const intro = strict ? STRICT_FLUFF_INTRO : DEFAULT_FLUFF_INTRO;
+  const fluffRules = strict ? STRICT_FLUFF_RULES : DEFAULT_FLUFF_RULES;
+  const categories = strict ? STRICT_FLUFF_TESTS.map(([id]) => id).concat('banned-phrase') : DEFAULT_FLUFF_CATEGORIES;
+
+  // GPT does not judge borderline sentences the same way twice (same article: 0, 2 then 3 fluff items).
+  // Three passes with fixed seeds run in parallel, and only what at least two of them flag is kept
+  const request = seed => ({
+      model: OPENAI_MODEL,
+      messages: [
+        { role: 'system', content: `${intro}
+
+STEP 1 — ARTICLE IDENTITY (do this BEFORE any evaluation):
+Before evaluating anything, read the TITLE carefully and determine:
+- article_topic: What is this article actually about? Derive the real topic from the title. Examples: "Biggest football attendances in Europe yesterday" → topic is "attendance figures roundup", NOT a match report. "Revisa una selección de los mejores chistes futboleros" → topic is "football jokes compilation". "Preview: Man Utd vs Tottenham" → topic is "match preview". The title defines the topic. Do NOT let the first event or name mentioned in the body redefine the topic.
+- article_type: What kind of article is it? One of: match-report, preview, transfer-news, rankings/list, roundup/compilation, analysis, interview, player-profile, opinion, news, other.
+- key_facts: List the 3-5 most important specific facts in the article (numbers, scores, names+actions, stats). You will use these to check for cross-paragraph repetition.
+
+ALL your evaluation (fluff detection, repetition) must be through the lens of this identified topic. If the title says "biggest attendances" and the article mentions Portugal vs Norway, the article topic is attendances — Portugal vs Norway is just one data point.
+
+STEP 2 — CROSS-PARAGRAPH FACT REPETITION:
+After identifying key_facts, scan the article for the same specific fact (same number, same stat, same score, same name+action) appearing in 2+ SEPARATE paragraphs.
+CRITICAL DISTINCTION: A fact mentioned again WITH new context, analysis, or additional details is NOT repetition — that is normal progressive elaboration. Only flag when the EXACT same information is restated with NO added value (pure redundancy, padding word count).
+Example NOT repetition: "Chile won 2-0" in intro, then later "Chile's 2-0 victory was sealed by goals from Gutiérrez and Pizarro in the second half" — the second adds new information.
+Example IS repetition: "Chile won 2-0" in paragraph 3, then "Chile defeated Mexico by a 2-0 scoreline" in paragraph 8 with nothing new added.
+For each repeated fact, report WHERE it appears using the "positions" array with SPECIFIC paragraph numbers: "§3", "§7", "§12". Count paragraphs from 1 (after the chapô). This lets editors jump directly to the right spot.
+Rules:
+- The chapô/lead paragraph is EXEMPT — it is allowed to state facts that appear later.
+- A table or list that organizes data is NOT repetition of itself — but if the prose ALSO states the same numbers from the table with no new context, that IS repetition.
+- If the same specific number or stat appears in 3+ separate locations (excluding chapô) with no added value each time, flag it as "high" severity repetition.
+- If a later mention ADDS context, analysis, a quote, or new details around the same fact, do NOT flag it — that is normal editorial writing.
+
+${fluffRules}` + calibration },
         { role: 'user', content: `TITLE: ${title}\n\nCHAPÔ (lead paragraph, exempt from the repetition and fluff checks):\n${chapo}\n\nARTICLE BODY (the paragraphs after the chapô, numbered: use these § numbers for positions):\n${excerpt}` }
       ],
       tools: [{
@@ -6441,7 +6530,7 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
                   type: 'object',
                   properties: {
                     quote: { type: 'string', description: 'Exact sentence that is semantic padding' },
-                    category: { type: 'string', enum: ['delete-test','any-team','obviousness','hope-want','restatement','generic-consequence','future-uncertainty','importance-no-explanation','momentum','determination','intrigue','challenge','opportunity','objective','context-free','evidence-free','repetition'], description: 'Primary test category this sentence fails' },
+                    category: { type: 'string', enum: categories, description: 'Primary test category this sentence fails' },
                     severity: { type: 'string', enum: ['high','medium','low'], description: 'How harmful this is to Google ranking: high=spam signal, medium=weakens quality, low=minor' },
                     tests_failed: { type: 'string', description: 'Which test(s) this sentence fails (e.g. "any-team, obviousness")' },
                     reason: { type: 'string', description: 'Brief explanation of why it is padding and how it hurts article quality' },
@@ -6465,6 +6554,13 @@ For each padding instance: the exact quote, a category (delete-test, any-team, c
   }).filter(Boolean);
   if (!passes.length) return null;
   const merged = mergeQualityPasses(passes);
+  if (strict) {
+    for (const item of strictPhraseFlags(bodyText)) {
+      const same = merged.fluff.find(f => sameQuote(f.quote, item.quote));
+      if (same) same.tests_failed = [same.tests_failed, item.tests_failed].filter(Boolean).join(', ');
+      else merged.fluff.push(item);
+    }
+  }
   // What an editor already marked as not a problem stays hidden when an article is analysed again
   const feedback = await fetchFluffFeedback().catch(() => []);
   const noFluff = dismissedTexts(feedback, 'fluff'), noRepeated = dismissedTexts(feedback, FEEDBACK_REPEATED);
@@ -7625,7 +7721,9 @@ const FLUFF_CAT_COLORS = {
   'future-uncertainty': 'generic', 'importance-no-explanation': 'evidence',
   'momentum': 'generic', 'determination': 'generic', 'intrigue': 'generic',
   'challenge': 'generic', 'opportunity': 'generic', 'objective': 'generic',
-  'context-free': 'evidence', 'evidence-free': 'evidence', 'repetition': 'repetition'
+  'context-free': 'evidence', 'evidence-free': 'evidence', 'repetition': 'repetition',
+  'word-count': 'delete', 'paragraph-ending': 'generic', 'ai-summary': 'restatement',
+  'banned-phrase': 'delete', 'em-dash': 'generic'
 };
 const FLUFF_COLOR_LABELS = {
   'delete': { label: 'Zero-value content', dot: '#EF4444' },
