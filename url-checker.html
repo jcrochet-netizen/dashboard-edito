@@ -6362,77 +6362,150 @@ Apply these tests. A sentence must fail at least 2 tests AND be the kind of cont
 For each padding instance: the exact quote, a category (delete-test, any-team, context-free, repetition, evidence-free), the severity (high/medium), which tests it fails, and a suggested rewrite in the same language. If the sentence should just be deleted, say "delete".`;
 const DEFAULT_FLUFF_CATEGORIES = ['delete-test','any-team','obviousness','hope-want','restatement','generic-consequence','future-uncertainty','importance-no-explanation','momentum','determination','intrigue','challenge','opportunity','objective','context-free','evidence-free','repetition'];
 
-// English sites: the writing checklist of their editors. A sentence is flagged when it fails at least two
-// of the 17 tests; the listed phrases and any em dash are flagged on their own
-const STRICT_FLUFF_SITES = new Set(['SPORTSMOLE', 'AFRIKFOOTZA', 'AFRIKFOOTNG', 'FOOTBALLGROUNDGUIDE', 'FOOTBALLWHISPERS']);
-const STRICT_FLUFF_TESTS = [
-  ['delete-test', 'Delete: if you deleted the sentence, would the reader lose almost no fact, argument, evidence or insight?'],
-  ['any-team', 'Any-team/any-player: would the sentence still work for almost any team or player once you swap the names?'],
-  ['obviousness', 'Obviousness: does it only state a consequence anyone could predict?'],
-  ['hope-want', 'Hope/want: does it only say someone "will hope", "will want", "will look to" or "will be eager" to do something obvious?'],
-  ['restatement', 'Restatement: does it just put the previous stat or fact into words without adding anything?'],
-  ['generic-consequence', 'Generic-consequence: is it a fact followed by a predictable conclusion that adds no new information?'],
-  ['future-uncertainty', 'Future-uncertainty: does it only say nobody knows what will happen ("only time will tell", "remains to be seen")?'],
-  ['importance-no-explanation', 'Importance-without-explanation: does it call something "crucial", "key" or "significant" without saying why or how?'],
-  ['momentum', 'Momentum: does it use "momentum", "build on", "bounce back", "strong start" and similar with no supporting detail?'],
-  ['determination', 'Determination: does it make up an obvious mental state ("will be determined to...")?'],
-  ['intrigue', 'Intrigue: does it tell the reader something is interesting instead of giving the interesting information ("a fascinating contest", "promises to be...")?'],
-  ['challenge', 'Challenge: does it just say a hard opponent will be hard, with no evidence?'],
-  ['context-free', 'Context-free: could the sentence have been written without any research into this subject?'],
-  ['evidence-free', 'Evidence-free judgement: does it give an assessment ("has been impressive") with no fact behind it?'],
-  ['word-count', 'Word-count: is a long sentence saying something that would fit in a fifth of the words?'],
-  ['paragraph-ending', 'Paragraph-ending: is it a generic summary added only because the paragraph seemed to need a close?'],
-  ['ai-summary', 'AI-summary: does it repeat information the reader has just read?'],
-];
-const STRICT_FLUFF_INTRO = 'You are the sub-editor of an English-language sports site. You apply the site\'s writing checklist to the article: you find padding sentences, and you check for facts repeated across paragraphs.';
-const STRICT_FLUFF_RULES = `STEP 3 — PADDING (the site's writing checklist):
+// The editors' writing checklist (colleague's rules for the English sites, adapted to French for TopMercato,
+// Afrik-Foot, BasketUSA and BasketEurope). A sentence is flagged when it fails at least two of the 17 tests; the listed phrases and
+// any em dash are flagged on their own, found by the page itself
+const STRICT_FLUFF_SITES = {
+  SPORTSMOLE: 'en', AFRIKFOOTZA: 'en', AFRIKFOOTNG: 'en', FOOTBALLGROUNDGUIDE: 'en', FOOTBALLWHISPERS: 'en',
+  TOPMERCATO: 'fr', AFRIKFOOTFR: 'fr', BASKETUSA: 'fr', BASKETEUROPE: 'fr',
+};
+// Unicode word boundaries: \b ignores accented letters ("s'annonce électrique")
+const frPhrase = src => new RegExp(`(?<![\\p{L}\\d])(?:${src})(?![\\p{L}\\d])`, 'iu');
+const STRICT_FLUFF = {
+  en: {
+    language: 'English',
+    tests: [
+      ['delete-test', "Delete: if you deleted the sentence, would the reader lose almost no fact, argument, evidence or insight?"],
+      ['any-team', "Any-team/any-player: would the sentence still work for almost any team or player once you swap the names?"],
+      ['obviousness', "Obviousness: does it only state a consequence anyone could predict?"],
+      ['hope-want', "Hope/want: does it only say someone \"will hope\", \"will want\", \"will look to\" or \"will be eager\" to do something obvious?"],
+      ['restatement', "Restatement: does it just put the previous stat or fact into words without adding anything?"],
+      ['generic-consequence', "Generic-consequence: is it a fact followed by a predictable conclusion that adds no new information?"],
+      ['future-uncertainty', "Future-uncertainty: does it only say nobody knows what will happen (\"only time will tell\", \"remains to be seen\")?"],
+      ['importance-no-explanation', "Importance-without-explanation: does it call something \"crucial\", \"key\" or \"significant\" without saying why or how?"],
+      ['momentum', "Momentum: does it use \"momentum\", \"build on\", \"bounce back\", \"strong start\" and similar with no supporting detail?"],
+      ['determination', "Determination: does it make up an obvious mental state (\"will be determined to...\")?"],
+      ['intrigue', "Intrigue: does it tell the reader something is interesting instead of giving the interesting information (\"a fascinating contest\", \"promises to be...\")?"],
+      ['challenge', "Challenge: does it just say a hard opponent will be hard, with no evidence?"],
+      ['context-free', "Context-free: could the sentence have been written without any research into this subject?"],
+      ['evidence-free', "Evidence-free judgement: does it give an assessment (\"has been impressive\") with no fact behind it?"],
+      ['word-count', "Word-count: is a long sentence saying something that would fit in a fifth of the words?"],
+      ['paragraph-ending', "Paragraph-ending: is it a generic summary added only because the paragraph seemed to need a close?"],
+      ['ai-summary', "AI-summary: does it repeat information the reader has just read?"],
+    ],
+    phrasesText: "\"only time will tell\", \"a clash of titans\", \"a fascinating contest\", \"in what promises to be\", \"a thrilling encounter\", \"it remains to be seen\", and \"this is not just X, it is Y\" constructions",
+    extra: '',
+    quotes: 'words between quotation marks said by someone',
+    question: "could this exact sentence, with only the names changed, appear in 100 other articles about this sport, and if so, does it need to exist?",
+    cut: 'Cut entirely',
+    placeholder: '[their record in the last five meetings]',
+    phrases: [
+      ['only time will tell', /\bonly time will tell\b/i],
+      ['a clash of titans', /\bclash of (?:the )?titans\b/i],
+      ['a fascinating contest', /\bfascinating contest\b/i],
+      ['in what promises to be', /\bin what promises to be\b/i],
+      ['a thrilling encounter', /\bthrilling encounter\b/i],
+      ['it remains to be seen', /\bremains to be seen\b/i],
+      ['not just X, it is Y', /\bnot (?:just|only|merely|simply)\b[^.!?]{1,100}?[,;:—–]\s*(?:it|this|that|they|he|she)(?:\s+(?:is|are|was|were)\b|['’](?:s|re)\b)/i],
+    ],
+    phraseLabel: p => `phrase "${p}"`, dashLabel: 'em dash',
+    phraseReason: 'Listed phrase: it could close 100 other articles about this sport and tells the reader nothing.',
+    phraseFix: 'Cut the phrase, or replace it with a specific fact from the article.',
+    dashReason: 'The house style allows no em dash.',
+    dashFix: 'Replace the em dash with a full stop, a comma or brackets.',
+  },
+  fr: {
+    language: 'French',
+    tests: [
+      ['delete-test', "Suppression (delete): if you deleted the sentence, would the reader lose almost no fact, argument, evidence or insight?"],
+      ['any-team', "N'importe quelle équipe (any-team/any-player): would the sentence still work for almost any club or player once you swap the names?"],
+      ['obviousness', "Évidence (obviousness): does it only state a consequence anyone could predict? E.g. « Une victoire permettrait à l'OM de prendre trois points »."],
+      ['hope-want', "Espoir/volonté (hope/want): does it only say someone « voudra », « aura à cœur de », « cherchera à », « tentera de », « sera désireux de » do something obvious? E.g. « L'OM voudra l'emporter ». MERCATO EXCEPTION (transfers, trades, free agency): a reported wish of a club, franchise or player IS the news (« Le Barça veut recruter Jonathan David », « Les Lakers veulent échanger leur meneur », « Le joueur souhaite partir cet hiver »): never flag it under this test."],
+      ['restatement', "Reformulation (restatement): does it just put the previous stat or fact into words without adding anything? E.g. « 5 buts en 3 matchs. Un rendement impressionnant. »"],
+      ['generic-consequence', "Conséquence générique (generic-consequence): is it a fact followed by a predictable conclusion that adds no new information? E.g. « Il a marqué 10 buts, de quoi attirer les regards des plus grands clubs. »"],
+      ['future-uncertainty', "Avenir incertain (future-uncertainty): does it only say nobody knows what will happen (« l'avenir nous le dira », « reste à savoir si », « affaire à suivre »)?"],
+      ['importance-no-explanation', "Importance sans explication (importance-without-explanation): does it call something « crucial », « décisif », « capital », « primordial », « déterminant » or « clé » without saying why or how?"],
+      ['momentum', "Dynamique (momentum): does it use « surfer sur sa dynamique », « enchaîner », « se relancer », « rebondir », « bon début de saison » and similar with no supporting detail?"],
+      ['determination', "Détermination (determination): does it make up an obvious mental state (« sera déterminé à », « voudra se racheter », « revanchard »)?"],
+      ['intrigue', "Suspense (intrigue): does it tell the reader something is interesting instead of giving the interesting information (« une affiche alléchante », « promet des étincelles », « s'annonce passionnant »)?"],
+      ['challenge', "Adversaire difficile (challenge): does it just say a hard opponent will be hard, with no evidence (« un déplacement périlleux », « un adversaire redoutable »)?"],
+      ['context-free', "Sans contexte (context-free): could the sentence have been written without any research into this subject?"],
+      ['evidence-free', "Jugement sans preuve (evidence-free judgement): does it give an assessment (« réalise une saison XXL », « en grande forme ») with no fact behind it?"],
+      ['word-count', "Nombre de mots (word-count): is a long sentence saying something that would fit in a fifth of the words?"],
+      ['paragraph-ending', "Fin de paragraphe (paragraph-ending): is it a generic summary added only because the paragraph seemed to need a close (« Une chose est sûre… »)?"],
+      ['ai-summary', "Résumé IA (ai-summary): does it repeat information the reader has just read (« Vous l'aurez compris… »)?"],
+    ],
+    phrasesText: "« l'avenir nous le dira », « le temps nous le dira », « reste à savoir si », « reste à voir », « affaire à suivre », « choc des titans », « une affiche alléchante », « dans ce qui s'annonce comme », « s'annonce passionnant / palpitant / indécis / explosif / électrique », « promet des étincelles », « une chose est sûre », « vous l'aurez compris », « le feuilleton continue / n'est pas terminé », and the constructions « ce n'est pas seulement X, c'est Y » and « (bien) plus qu'un simple X »",
+    extra: "\nTEASING: the site often withholds the name of the targeted player (« une piste en défense », « un crack argentin »). That is its editorial line: never flag a sentence because a name is hidden.\nThe spaced en dash ( – ) is the normal French incise: never flag it.\n",
+    quotes: 'words between « » or quotation marks said by someone',
+    question: "« Cette phrase, en changeant seulement les noms, pourrait-elle figurer dans 100 autres articles sur ce sport ? Si oui, doit-elle exister ? »",
+    cut: 'À supprimer',
+    placeholder: '[leur bilan sur les cinq dernières confrontations]',
+    phrases: [
+      ["l'avenir / le temps nous le dira", frPhrase("(?:seul )?(?:l['’]avenir|le temps) (?:nous )?le dira")],
+      // Only the cliché: "reste à savoir si / comment / qui…" or at the end of the sentence, not "il reste à voir le médecin"
+      ['reste à savoir / à voir', frPhrase("(?:il )?reste à (?:savoir|voir)(?=\\s*(?:[.!?…:,]|$)|\\s+(?:(?:si|comment|ce que|qui|quel|quelle|quels|quelles|quand|où|combien|lequel|laquelle)(?![\\p{L}])|s['’]ils?(?![\\p{L}])|ce qu['’]|qu['’]))")],
+      ['affaire à suivre', frPhrase('affaire à suivre')],
+      ['choc des titans', frPhrase('choc des titans')],
+      ['affiche alléchante', frPhrase('affiche alléchante')],
+      ["dans ce qui s'annonce comme", frPhrase("dans ce qui s['’]annonce comme")],
+      ["s'annonce passionnant…", frPhrase("s['’]annoncen?t?[^.!?]{0,30}?(?:passionnant|palpitant|indécis|explosi[fv]|électrique)\\p{L}*")],
+      ['promet des étincelles', frPhrase('promet(?:tent)? des étincelles')],
+      ['une chose est sûre', frPhrase('une chose est sûre')],
+      ["vous l'aurez compris", frPhrase("vous l['’]aurez compris")],
+      ['le feuilleton continue', frPhrase("le feuilleton (?:continue|se poursuit|n['’]est pas (?:terminé|fini|clos))")],
+      ["ce n'est pas seulement X, c'est Y", frPhrase("n['’]est pas (?:seulement|simplement|juste|qu['’]une?)[^.!?]{1,100}?[,;:—–]\\s*c['’](?:est|était)")],
+      ["plus qu'un simple", frPhrase("(?:bien )?plus qu['’]une? simple")],
+    ],
+    phraseLabel: p => `expression « ${p} »`, dashLabel: 'tiret cadratin',
+    phraseReason: "Expression de la liste : elle pourrait conclure 100 autres articles sur ce sport et n'apprend rien au lecteur.",
+    phraseFix: "Supprimer l'expression, ou la remplacer par un fait précis tiré de l'article.",
+    dashReason: "Le tiret cadratin (—) n'est pas autorisé.",
+    dashFix: 'Le remplacer par un point, une virgule, des parenthèses ou un tiret demi-cadratin (–).',
+  },
+};
+STRICT_FLUFF.en.intro = "You are the sub-editor of an English-language sports site. You apply the site's writing checklist to the article: you find padding sentences, and you check for facts repeated across paragraphs.";
+STRICT_FLUFF.fr.intro = "You are the sub-editor of a French-language sports site. You apply the site's writing checklist to the article: you find padding sentences, and you check for facts repeated across paragraphs.";
+
+function strictFluffRules(r) {
+  return `STEP 3 — PADDING (the site's writing checklist):
 Judge every sentence of the ARTICLE BODY against these 17 tests:
-${STRICT_FLUFF_TESTS.map(([id, test], i) => `${i + 1}. [${id}] ${test}`).join('\n')}
+${r.tests.map(([id, test], i) => `${i + 1}. [${id}] ${test}`).join('\n')}
 
 TWO-TEST RULE: flag a sentence only when it clearly fails at least TWO of these tests. If you are unsure whether a test fails, it does not.
 
 FLAGGED ON THEIR OWN (one is enough, outside the two-test rule), close variants included:
-"only time will tell", "a clash of titans", "a fascinating contest", "in what promises to be", "a thrilling encounter", "it remains to be seen", and "this is not just X, it is Y" constructions. Use the category "banned-phrase" for them.
-Em dashes are detected by the tool itself: do not report a sentence only because it contains one.
+${r.phrasesText}. Use the category "banned-phrase" for them.
+Em dashes (—) are detected by the tool itself: do not report a sentence only because it contains one.
+${r.extra}
+NEVER FLAG: the chapô, headings, direct quotes (${r.quotes}: the writer cannot rewrite them), author bios.
 
-NEVER FLAG: the chapô, headings, direct quotes (words between quotation marks said by someone: the writer cannot rewrite them), author bios.
-
-For each flagged sentence:
+For each flagged sentence (write reason and suggestion in ${r.language}):
 - quote: the exact sentence, word for word.
 - category: the main test it fails (or "banned-phrase").
 - tests_failed: every test it fails, by its name in brackets above, comma-separated (e.g. "any-team, hope-want").
 - severity: "high" if it fails 3 or more tests or is pure filler, "medium" if it fails exactly 2 tests or contains a listed phrase.
-- reason: start by answering this question for the writer: could this exact sentence, with only the names changed, appear in 100 other articles about this sport, and if so, does it need to exist? Then say what is missing.
-- suggestion: a rewrite that adds a specific fact, stat or comparison, or "Cut entirely". Use only facts that appear in the article. If none fits, put the kind of fact to add in square brackets, e.g. "[their record in the last five meetings]". Never invent a fact.`;
+- reason: start by answering this question for the writer: ${r.question} Then say what is missing.
+- suggestion: a rewrite that adds a specific fact, stat or comparison, or "${r.cut}". Use only facts that appear in the article. If none fits, put the kind of fact to add in square brackets, e.g. "${r.placeholder}". Never invent a fact.`;
+}
 
-// Flagged on their own, without asking GPT: the page finds them the same way every time
-const STRICT_FLUFF_PHRASES = [
-  ['only time will tell', /\bonly time will tell\b/i],
-  ['a clash of titans', /\bclash of (?:the )?titans\b/i],
-  ['a fascinating contest', /\bfascinating contest\b/i],
-  ['in what promises to be', /\bin what promises to be\b/i],
-  ['a thrilling encounter', /\bthrilling encounter\b/i],
-  ['it remains to be seen', /\bremains to be seen\b/i],
-  ['not just X, it is Y', /\bnot (?:just|only|merely|simply)\b[^.!?]{1,100}?[,;:—–]\s*(?:it|this|that|they|he|she)(?:\s+(?:is|are|was|were)\b|['’](?:s|re)\b)/i],
-];
-function strictPhraseFlags(bodyText) {
+// Listed phrases and em dashes, sentence by sentence: the same result at every analysis
+function strictPhraseFlags(bodyText, r) {
   const items = [];
   for (const line of bodyText.split('\n')) {
-    for (const raw of line.match(/[^.!?]+(?:[.!?]+["'’”)\]]*|$)/g) || []) {
+    for (const raw of line.match(/[^.!?]+(?:[.!?]+["'’”»)\]]*|$)/g) || []) {
       const quote = raw.trim();
       if (!quote) continue;
-      const phrases = STRICT_FLUFF_PHRASES.filter(([, re]) => re.test(quote)).map(([label]) => label);
+      const phrases = r.phrases.filter(([, re]) => re.test(quote)).map(([label]) => label);
       const dash = quote.includes('—');
       if (!phrases.length && !dash) continue;
       items.push({
         quote,
         category: phrases.length ? 'banned-phrase' : 'em-dash',
         severity: 'medium',
-        tests_failed: phrases.map(p => `phrase "${p}"`).concat(dash ? ['em dash'] : []).join(', '),
-        reason: [phrases.length ? 'Listed phrase: it could close 100 other articles about this sport and tells the reader nothing.' : '',
-          dash ? 'The house style allows no em dash.' : ''].filter(Boolean).join(' '),
-        suggestion: [phrases.length ? 'Cut the phrase, or replace it with a specific fact from the article.' : '',
-          dash ? 'Replace the em dash with a full stop, a comma or brackets.' : ''].filter(Boolean).join(' '),
+        tests_failed: phrases.map(r.phraseLabel).concat(dash ? [r.dashLabel] : []).join(', '),
+        reason: [phrases.length ? r.phraseReason : '', dash ? r.dashReason : ''].filter(Boolean).join(' '),
+        suggestion: [phrases.length ? r.phraseFix : '', dash ? r.dashFix : ''].filter(Boolean).join(' '),
       });
     }
   }
@@ -6471,10 +6544,10 @@ async function runQualityCheck(title, bodyText, articleUrl, site) {
   } catch(e) {}
 
   // The English sites apply their editors' writing checklist; the other sites keep the Google rater rules
-  const strict = STRICT_FLUFF_SITES.has(site);
-  const intro = strict ? STRICT_FLUFF_INTRO : DEFAULT_FLUFF_INTRO;
-  const fluffRules = strict ? STRICT_FLUFF_RULES : DEFAULT_FLUFF_RULES;
-  const categories = strict ? STRICT_FLUFF_TESTS.map(([id]) => id).concat('banned-phrase') : DEFAULT_FLUFF_CATEGORIES;
+  const strict = STRICT_FLUFF[STRICT_FLUFF_SITES[site]] || null;
+  const intro = strict ? strict.intro : DEFAULT_FLUFF_INTRO;
+  const fluffRules = strict ? strictFluffRules(strict) : DEFAULT_FLUFF_RULES;
+  const categories = strict ? strict.tests.map(([id]) => id).concat('banned-phrase') : DEFAULT_FLUFF_CATEGORIES;
 
   // GPT does not judge borderline sentences the same way twice (same article: 0, 2 then 3 fluff items).
   // Three passes with fixed seeds run in parallel, and only what at least two of them flag is kept
@@ -6555,7 +6628,7 @@ ${fluffRules}` + calibration },
   if (!passes.length) return null;
   const merged = mergeQualityPasses(passes);
   if (strict) {
-    for (const item of strictPhraseFlags(bodyText)) {
+    for (const item of strictPhraseFlags(bodyText, strict)) {
       const same = merged.fluff.find(f => sameQuote(f.quote, item.quote));
       if (same) same.tests_failed = [same.tests_failed, item.tests_failed].filter(Boolean).join(', ');
       else merged.fluff.push(item);
