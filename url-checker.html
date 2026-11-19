@@ -7918,8 +7918,8 @@ function buildSummaryItems(discoverChecks, contentChecks, q, ai, spellResult) {
   items.push(...qualitySummaryItems(q), ...spellSummaryItems(spellResult));
   const src = ai?.lecture_editoriale?.sourcing_present;
   if (src && src.statut !== 'ok') items.push({ level: src.statut === 'fail' ? 'fix' : 'improve', sec: 'editorial', text: t('ai_sourcing') + ' — ' + (src.commentaire || '') });
-  // Free-text weaknesses from the AI Discover review, capped to keep the summary short
-  (ai?.discover?.points_faibles || []).slice(0, 3).forEach(p => items.push({ level: 'improve', sec: 'ai', text: p }));
+  // GPT's free-text Discover weaknesses stay in the "AI analysis" card only: GPT reads the text alone
+  // (no images, videos or embeds) and its points were often generic ("lacks visual elements")
   return items;
 }
 
