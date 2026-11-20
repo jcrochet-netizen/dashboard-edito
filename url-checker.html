@@ -6228,9 +6228,22 @@ function detectLanguageHint(doc) {
 }
 
 // ========== SPELLCHECK ==========
+// True when the text, as extracted, has a line break inside or right after `original`. Subheadings and list
+// items are lines of their own and take no final punctuation
+function touchesLineBreak(text, original) {
+  const norm = s => String(s).replace(/[’‘]/g, "'");
+  const words = norm(original).trim().split(/\s+/).filter(Boolean).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  if (!words.length) return false;
+  for (const m of norm(text).matchAll(new RegExp(words.join('\\s+') + '[ \\t]*(\\n|$)?', 'gi'))) {
+    if (m[0].includes('\n') || m[1] !== undefined) return true;
+  }
+  return false;
+}
+
 async function runSpellcheck(bodyText, doc) {
-  const words = bodyText.split(/\s+/);
-  const truncated = words.slice(0, 4000).join(' ');
+  // Line breaks kept: subheadings (H2/H3), list items and paragraphs stay separate lines. Joined with
+  // spaces, "…son trio d'attaque titulaire" + "Le club…" read like a missing full stop
+  const truncated = (bodyText.match(/\S+\s*/g) || []).slice(0, 4000).join('').trim();
   if (truncated.length < 20) return null;
   // Read while GPT works: words the team marked "Ignore"
   const feedbackPromise = fetchFluffFeedback().catch(() => []);
@@ -6253,6 +6266,7 @@ For each genuine error, provide:
 WHAT TO FLAG: misspelled common words, obvious typos (doubled/missing letters), broken syntax that makes a sentence unreadable, clearly wrong verb conjugations where the subject is visible.
 
 WHAT TO SKIP (these are all standard in sports journalism):
+- Layout: the text keeps the article's layout, one block per line. A line can be a subheading (H2/H3) or a list item, which never takes a final full stop or colon. NEVER flag missing punctuation at the end of a line, nor the capital letter that starts the next line.
 - Proper nouns: player names, club names, nicknames, abbreviations (CR7, KDB, VAR), brand names. Never correct accents on names — "Atletico" and "Atlético" are both fine.
 - Sports conventions: score notation with hyphens (6-1), hyphen variants in club names (Paris Saint-Germain / Paris-Saint-Germain), English loanwords used in any language (coach, staff, match, penalty, corner, goal, pressing, offside, playoff, assist, fair play, manager, mister, ranking, leader, hat-trick, derby, clean sheet), transfer terms (free agent, loan deal, release clause), and all sports jargon in any language (tiki-taka, catenaccio, gegenpressing, libero, trequartista, etc.).
 - Stylistic choices: optional commas (before conjunctions, around adverbs like néanmoins/cependant/however — both with and without are correct), missing articles before country names ("England will face Czech Republic" is standard), uppercase letters without diacritics (L'Equipe, SERIE A, CESKE), regional/geographic adjectives in lowercase (nordiste, marseillaise, torinese, madrileño, paulista, pražský, warszawski).
@@ -6316,6 +6330,9 @@ Respond ONLY via the spellcheck_report tool.`;
         const c = e.correction.trim().toLowerCase().replace(/[’‘]/g, "'");
         // Exact match after normalizing quotes = false positive
         if (o === c) return false;
+        // Only punctuation or a capital letter added where a line ends (subheading, list item): not an error
+        const bare = x => x.replace(/[\p{P}\s]/gu, '');
+        if (bare(o) === bare(c) && touchesLineBreak(bodyText, e.original)) return false;
         // Gender-marker swap: differ only by trailing 'e' (French feminine: une/un, l'une/l'un, certaine/certain, seule/seul...)
         if (o === c + 'e' || c === o + 'e') return false;
         // Explicit gender pairs that trailing-e rule does not catch
