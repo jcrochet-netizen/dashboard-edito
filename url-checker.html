@@ -366,6 +366,16 @@ body {
 .rf-actions .fluff-feedback-btn { padding: 2px 8px; }
 .rf-verdict { font-size: 11px; font-weight: 600; color: var(--text-dim); }
 .rf-verdict.confirmed { color: var(--red); }
+/* Settings: this browser's recent verdicts, each with an Undo button */
+.verdict-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 16px; }
+.verdict-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.verdict-row:last-child { border-bottom: none; }
+.verdict-text { flex: 1; min-width: 0; }
+.verdict-quote { font-style: italic; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verdict-meta { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verdict-meta .confirmed { color: var(--red); font-weight: 600; }
+.verdict-meta .dismissed { font-weight: 600; }
+.verdict-empty { padding: 10px; font-size: 12px; color: var(--text-dim); }
 
 /* Fluff split layout */
 .fluff-split { display: flex; gap: 0; min-height: 300px; border-top: 1px solid var(--border); }
@@ -399,7 +409,8 @@ body {
 .fluff-review-card { padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; cursor: pointer; transition: border-color 0.15s; }
 .fluff-review-card:hover { border-color: var(--accent); }
 .fluff-review-card.active { border-color: var(--text); background: var(--card-bg); }
-.fluff-review-card.dismissed { opacity: 0.35; }
+/* The actions row stays readable on a dismissed card, so its Undo button can be seen */
+.fluff-review-card.dismissed > :not(.fluff-review-actions) { opacity: 0.35; }
 .fluff-review-card.confirmed { border-left: 3px solid var(--red); }
 .fluff-review-quote { font-style: italic; color: var(--text-muted); margin-bottom: 6px; line-height: 1.4; }
 .fluff-review-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -754,6 +765,7 @@ body {
   border-radius: var(--radius);
   padding: 28px;
   width: 440px; max-width: 90vw;
+  max-height: 90vh; overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
 .modal h3 {
@@ -1447,6 +1459,9 @@ body {
     <label for="settingsProxyUrl" style="margin-top:16px" data-t="settings_proxy_label">CORS Proxy (Google Apps Script URL)</label>
     <input type="text" id="settingsProxyUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <div class="hint" data-t="settings_proxy_hint">Your own proxy for reliable page fetching. <a href="#" onclick="showProxyHelp();return false" data-t="settings_proxy_link">How to set up (30 sec)</a></div>
+    <label style="margin-top:16px" data-t="verdicts_title">My recent verdicts</label>
+    <div class="hint" style="margin-bottom:8px" data-t="verdicts_hint">Clicked the wrong button? Undo it here: the tool forgets that verdict for the whole team.</div>
+    <div class="verdict-list" id="verdictList"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeSettings()" data-t="btn_cancel">Cancel</button>
       <button class="btn" onclick="saveSettings()" data-t="btn_save">Save</button>
@@ -1522,6 +1537,14 @@ const T = {
     fluff_dismiss_title: "Dismiss this flag — the sentence is fine",
     fluff_confirmed: "Confirmed",
     fluff_dismissed: "Dismissed",
+    verdict_undo_btn: "Undo",
+    verdict_undo_title: "Clicked by mistake? Take this verdict back: the tool forgets it",
+    verdicts_title: "My recent verdicts",
+    verdicts_hint: "Clicked the wrong button? Undo it here: the tool forgets that verdict for the whole team.",
+    verdicts_empty: "No verdict given from this browser yet.",
+    verdict_kind_fluff: "Advice",
+    verdict_kind_repeated: "Repetition",
+    verdict_kind_spelling: "Spelling",
     spell_ignore_btn: "Ignore",
     spell_ignore_title: "Not a mistake (a club or player name, for instance): hidden here and in the team's next analyses",
     repeated_ok_btn: "Yes, it's repeated",
@@ -1996,6 +2019,14 @@ const T = {
     fluff_dismiss_title: "Ignorer ce signalement — la phrase est correcte",
     fluff_confirmed: "Confirmé",
     fluff_dismissed: "Ignoré",
+    verdict_undo_btn: "Annuler",
+    verdict_undo_title: "Clic par erreur ? Annule ce choix : l'outil l'oublie",
+    verdicts_title: "Mes derniers retours",
+    verdicts_hint: "Un clic par erreur ? Annule-le ici : l'outil oublie ce retour pour toute l'équipe.",
+    verdicts_empty: "Aucun retour donné depuis ce navigateur.",
+    verdict_kind_fluff: "Conseil",
+    verdict_kind_repeated: "Répétition",
+    verdict_kind_spelling: "Orthographe",
     spell_ignore_btn: "Oublier",
     spell_ignore_title: "Ce n'est pas une faute (nom de club ou de joueur, par exemple) : masqué ici et dans les prochaines analyses de l'équipe",
     repeated_ok_btn: "Oui, c'est répété",
@@ -2461,6 +2492,14 @@ const T = {
     fluff_dismiss_title: "Ignorar este alerta — a frase está correta",
     fluff_confirmed: "Confirmado",
     fluff_dismissed: "Ignorado",
+    verdict_undo_btn: "Desfazer",
+    verdict_undo_title: "Clicou por engano? Desfaça esta resposta: a ferramenta a esquece",
+    verdicts_title: "Minhas últimas respostas",
+    verdicts_hint: "Clicou no botão errado? Desfaça aqui: a ferramenta esquece essa resposta para toda a equipe.",
+    verdicts_empty: "Nenhuma resposta dada neste navegador ainda.",
+    verdict_kind_fluff: "Alerta",
+    verdict_kind_repeated: "Repetição",
+    verdict_kind_spelling: "Ortografia",
     spell_ignore_btn: "Ignorar",
     spell_ignore_title: "Não é um erro (nome de clube ou de jogador, por exemplo): ocultado aqui e nas próximas análises da equipe",
     repeated_ok_btn: "Sim, está repetido",
@@ -2926,6 +2965,14 @@ const T = {
     fluff_dismiss_title: "Descartar esta alerta — la frase está bien",
     fluff_confirmed: "Confirmado",
     fluff_dismissed: "Descartado",
+    verdict_undo_btn: "Deshacer",
+    verdict_undo_title: "¿Clic por error? Deshaz esta respuesta: la herramienta la olvida",
+    verdicts_title: "Mis últimas respuestas",
+    verdicts_hint: "¿Clic en el botón equivocado? Deshazlo aquí: la herramienta olvida esa respuesta para todo el equipo.",
+    verdicts_empty: "Ninguna respuesta dada desde este navegador todavía.",
+    verdict_kind_fluff: "Alerta",
+    verdict_kind_repeated: "Repetición",
+    verdict_kind_spelling: "Ortografía",
     spell_ignore_btn: "Ignorar",
     spell_ignore_title: "No es un error (nombre de club o de jugador, por ejemplo): oculto aquí y en los próximos análisis del equipo",
     repeated_ok_btn: "Sí, está repetido",
@@ -3444,17 +3491,47 @@ async function fetchFluffFeedback() {
       domain: e.domain || '',
       quote: e.quote || '',
       tests_failed: e.tests_failed || '',
-      verdict: e.action === 'confirm' ? 'YES fluff' : 'NO not fluff'
+      verdict: e.action === 'undo' ? FEEDBACK_UNDO : e.action === 'confirm' ? 'YES fluff' : 'NO not fluff'
     }));
   } catch(e) {}
-  // Deduplicate: if remote has the same quote, skip the local copy
-  const remoteQuotes = new Set(remote.map(r => (r.quote || '').substring(0, 80)));
+  // A local row already in the sheet is skipped, as many times as the sheet holds the same text and verdict:
+  // a verdict or an undo that has not reached the sheet yet still counts
+  const sig = r => (r.quote || '').substring(0, 80) + '|' + (isUndoRow(r) ? 'undo' : feedbackIsNo(r) ? 'no' : 'yes');
+  const inSheet = {};
+  remote.forEach(r => { const k = sig(r); inSheet[k] = (inSheet[k] || 0) + 1; });
   const merged = [...remote];
   for (const entry of local) {
-    if (!remoteQuotes.has((entry.quote || '').substring(0, 80))) merged.push(entry);
+    const k = sig(entry);
+    if (inSheet[k] > 0) inSheet[k]--;
+    else merged.push(entry);
   }
-  if (merged.length > 0) { _feedbackCache = merged; _feedbackCacheTime = Date.now(); }
-  return merged;
+  const effective = applyUndos(merged);
+  if (effective.length > 0) { _feedbackCache = effective; _feedbackCacheTime = Date.now(); }
+  return effective;
+}
+
+// A verdict clicked by mistake is taken back with an "UNDO" row (the sheet only ever gets new rows):
+// it cancels the earlier verdicts on the same text of the same article, for the same kind of check
+const FEEDBACK_UNDO = 'UNDO';
+function isUndoRow(r) { return r.action === 'undo' || String(r.verdict || '').trim().toUpperCase() === FEEDBACK_UNDO; }
+function verdictKey(r) { return feedbackKind(r) + '|' + articleKey(r.url) + '|' + normFeedbackText(r.quote); }
+function applyUndos(rows) {
+  const kept = [];
+  for (const r of rows) {
+    if (!isUndoRow(r)) { kept.push(r); continue; }
+    const k = verdictKey(r);
+    for (let i = kept.length - 1; i >= 0; i--) if (verdictKey(kept[i]) === k) kept.splice(i, 1);
+  }
+  return kept;
+}
+// This browser's verdicts, minus the ones taken back
+function localVerdicts() {
+  try { return applyUndos(JSON.parse(localStorage.getItem('media_dashboard_fluff_feedback') || '[]')); }
+  catch(e) { return []; }
+}
+// Takes a verdict back, in this browser and in the team sheet; without a URL, it is the article on screen
+function undoVerdict({ quote, tests_failed, url, domain }) {
+  sendFeedback({ quote, tests_failed, verdict: FEEDBACK_UNDO, action: 'undo', url, domain });
 }
 
 // The same sheet keeps the spelling "Ignore" clicks and the repeated-fact verdicts,
@@ -3509,12 +3586,13 @@ function hiddenIssues(feedback, kind, url, title) {
 }
 
 // Saves a verdict in this browser and in the team sheet (fire-and-forget)
-function sendFeedback({ quote, tests_failed, verdict, action }) {
-  let articleUrl = document.getElementById('resultUrl')?.textContent || '';
+// An undo from Settings passes the URL and domain of the verdict it takes back
+function sendFeedback({ quote, tests_failed, verdict, action, url, domain: siteDomain }) {
+  let articleUrl = url || document.getElementById('resultUrl')?.textContent || '';
   // A draft is known by its title (its URL field only says "(pasted HTML)")
-  if (!/^https?:\/\//i.test(articleUrl)) articleUrl = 'draft: ' + (document.getElementById('resultTitle')?.textContent || '').trim();
+  if (!url && !/^https?:\/\//i.test(articleUrl)) articleUrl = 'draft: ' + (document.getElementById('resultTitle')?.textContent || '').trim();
   // A draft has no URL: its site code goes in the Domain column so the row still belongs to a site
-  let domain = _analysisSite || '';
+  let domain = siteDomain || _analysisSite || '';
   // "draft: …" parses as a URL with an empty host: only http(s) addresses give a domain
   if (/^https?:\/\//i.test(articleUrl)) try { domain = new URL(articleUrl).hostname.replace('www.',''); } catch(e) {}
   let reviewer = document.getElementById('reviewerSelect')?.value || '';
@@ -3684,7 +3762,36 @@ document.getElementById('langSelect').addEventListener('change', e => {
 
 // ========== SETTINGS ==========
 function openSettings() {
+  renderVerdictList();
   document.getElementById('settingsModal').classList.add('active');
+}
+
+// Settings: the latest verdicts given from this browser, each with an Undo button
+let _verdictListView = [];
+function renderVerdictList() {
+  const list = document.getElementById('verdictList');
+  if (!list) return;
+  _verdictListView = localVerdicts().slice(-30).reverse();
+  if (!_verdictListView.length) { list.innerHTML = `<div class="verdict-empty">${esc(t('verdicts_empty'))}</div>`; return; }
+  const kindLabel = { fluff: 'verdict_kind_fluff', [FEEDBACK_REPEATED]: 'verdict_kind_repeated', [FEEDBACK_SPELL]: 'verdict_kind_spelling' };
+  const where = u => { try { const x = new URL(u); return x.hostname.replace(/^www\./, '') + x.pathname; } catch(e) { return String(u || ''); } };
+  list.innerHTML = _verdictListView.map((v, n) => {
+    const yes = v.action === 'confirm';
+    const date = v.ts ? new Date(v.ts).toLocaleString(LANG, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div class="verdict-row">
+      <div class="verdict-text">
+        <div class="verdict-quote" title="${esc(v.quote)}">"${esc(v.quote)}"</div>
+        <div class="verdict-meta" title="${esc(v.url)}"><span class="${yes ? 'confirmed' : 'dismissed'}">${esc(t(yes ? 'fluff_confirmed' : 'fluff_dismissed'))}</span> · ${esc(t(kindLabel[feedbackKind(v)]))} · ${esc(date)} · ${esc(where(v.url))}</div>
+      </div>
+      <button class="fluff-feedback-btn" onclick="undoListedVerdict(${n})" title="${esc(t('verdict_undo_title'))}">${esc(t('verdict_undo_btn'))}</button>
+    </div>`;
+  }).join('');
+}
+function undoListedVerdict(n) {
+  const v = _verdictListView[n];
+  if (!v) return;
+  undoVerdict({ quote: v.quote, tests_failed: v.tests_failed, url: v.url, domain: v.domain });
+  renderVerdictList();
 }
 function closeSettings() {
   document.getElementById('settingsModal').classList.remove('active');
@@ -8170,7 +8277,7 @@ function renderQuality(q, bodyText) {
           ? ` — ${rf.positions.join(', ')}`
           : '';
         html += `<div id="rf_${i}" style="font-size:12px;color:var(--text-muted);line-height:1.8;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline"><span style="color:var(--severity-high,#ef4444)">•</span> <span class="rf-fact">${esc(rf.fact)}</span> <span style="font-size:11px;opacity:0.6;white-space:nowrap">(${rf.locations}x${esc(posInfo)})</span>
-          <span class="rf-actions"><button class="fluff-feedback-btn fluff-confirm" onclick="repeatedFeedback(${i},'confirm')" title="${esc(t('repeated_ok_title'))}">${esc(t('repeated_ok_btn'))}</button><button class="fluff-feedback-btn fluff-dismiss" onclick="repeatedFeedback(${i},'dismiss')" title="${esc(t('repeated_dismiss_title'))}">${esc(t('fluff_dismiss_btn'))}</button></span></div>`;
+          <span class="rf-actions">${rfActionsHtml(i)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -8284,6 +8391,7 @@ function renderQuality(q, bodyText) {
         <div class="fluff-review-actions">
           <button class="fluff-feedback-btn fluff-confirm" onclick="event.stopPropagation();fluffFeedback('${fid}','confirm')" title="${t('fluff_ok_title')}">${t('fluff_ok_btn')}</button>
           <button class="fluff-feedback-btn fluff-dismiss" onclick="event.stopPropagation();fluffFeedback('${fid}','dismiss')" title="${t('fluff_dismiss_title')}">${t('fluff_dismiss_btn')}</button>
+          <button class="fluff-feedback-btn fluff-undo" style="display:none" onclick="event.stopPropagation();fluffUndo('${fid}')" title="${esc(t('verdict_undo_title'))}">${esc(t('verdict_undo_btn'))}</button>
         </div>
       </div>`;
     });
@@ -8294,7 +8402,7 @@ function renderQuality(q, bodyText) {
 
   // Export feedback button
   try {
-    const fb = JSON.parse(localStorage.getItem('media_dashboard_fluff_feedback') || '[]');
+    const fb = localVerdicts();
     if (fb.length > 0) {
       const conf = fb.filter(e => e.action === 'confirm').length;
       const dism = fb.filter(e => e.action === 'dismiss').length;
@@ -8350,59 +8458,82 @@ function renderAI(ai) {
 }
 
 // ========== FLUFF FEEDBACK ==========
+function rfActionsHtml(i) {
+  return `<button class="fluff-feedback-btn fluff-confirm" onclick="repeatedFeedback(${i},'confirm')" title="${esc(t('repeated_ok_title'))}">${esc(t('repeated_ok_btn'))}</button><button class="fluff-feedback-btn fluff-dismiss" onclick="repeatedFeedback(${i},'dismiss')" title="${esc(t('repeated_dismiss_title'))}">${esc(t('fluff_dismiss_btn'))}</button>`;
+}
+
 function repeatedFeedback(i, action) {
+  const rf = _qualityView?.q?.article_identity?.repeated_facts?.[i];
+  if (!rf) return;
+  sendFeedback({ quote: rf.fact, tests_failed: FEEDBACK_REPEATED, verdict: action === 'confirm' ? 'YES repeated' : 'NO not repeated', action });
+  setRepeatedState(i, action);
+}
+function repeatedUndo(i) {
+  const rf = _qualityView?.q?.article_identity?.repeated_facts?.[i];
+  if (!rf) return;
+  undoVerdict({ quote: rf.fact, tests_failed: FEEDBACK_REPEATED });
+  setRepeatedState(i, null);
+}
+// action: 'confirm', 'dismiss', or null when the verdict was undone
+function setRepeatedState(i, action) {
   const rf = _qualityView?.q?.article_identity?.repeated_facts?.[i];
   const row = document.getElementById('rf_' + i);
   if (!rf || !row) return;
-  sendFeedback({ quote: rf.fact, tests_failed: FEEDBACK_REPEATED, verdict: action === 'confirm' ? 'YES repeated' : 'NO not repeated', action });
   rf._dismissed = action === 'dismiss';
-  const actions = row.querySelector('.rf-actions');
-  if (rf._dismissed) {
-    row.style.opacity = '0.4';
-    row.querySelector('.rf-fact').style.textDecoration = 'line-through';
-    actions.innerHTML = `<span class="rf-verdict">${esc(t('fluff_dismissed'))}</span>`;
-  } else {
-    actions.innerHTML = `<span class="rf-verdict confirmed">${esc(t('fluff_confirmed'))}</span>`;
-  }
+  row.style.opacity = rf._dismissed ? '0.4' : '';
+  row.querySelector('.rf-fact').style.textDecoration = rf._dismissed ? 'line-through' : '';
+  const undo = `<button class="fluff-feedback-btn fluff-undo" onclick="repeatedUndo(${i})" title="${esc(t('verdict_undo_title'))}">${esc(t('verdict_undo_btn'))}</button>`;
+  row.querySelector('.rf-actions').innerHTML = !action ? rfActionsHtml(i)
+    : `<span class="rf-verdict${action === 'confirm' ? ' confirmed' : ''}">${esc(t(action === 'confirm' ? 'fluff_confirmed' : 'fluff_dismissed'))}</span>${undo}`;
   refreshQualityCounts();
+}
+
+// Quote and tests of a fluff card, kept base64-encoded in its data attributes to avoid escaping issues
+function fluffCardData(row) {
+  const dec = b => { try { return decodeURIComponent(escape(atob(b || ''))); } catch(e) { return ''; } };
+  return { quote: dec(row.dataset.quote), tests: dec(row.dataset.tests) };
 }
 
 function fluffFeedback(fid, action) {
   const row = document.getElementById(fid);
   if (!row) return;
-  // Read quote and tests from data attributes (base64-encoded to avoid escaping issues)
-  let decodedQuote = '', decodedTests = '';
-  try { decodedQuote = decodeURIComponent(escape(atob(row.dataset.quote || ''))); } catch(e) {}
-  try { decodedTests = decodeURIComponent(escape(atob(row.dataset.tests || ''))); } catch(e) {}
-  sendFeedback({ quote: decodedQuote, tests_failed: decodedTests, verdict: action === 'confirm' ? 'YES fluff' : 'NO not fluff', action });
-  const item = _qualityView?.fluff?.[Number(row.dataset.fluffIdx)];
-  if (item) { item._dismissed = action === 'dismiss'; refreshQualityCounts(); }
-
-  if (action === 'dismiss') {
-    row.classList.add('dismissed');
-    row.querySelector('.fluff-feedback-btn.fluff-dismiss').textContent = t('fluff_dismissed');
-    row.querySelector('.fluff-feedback-btn.fluff-dismiss').disabled = true;
-    row.querySelector('.fluff-feedback-btn.fluff-confirm').style.display = 'none';
-  } else {
-    row.classList.add('confirmed');
-    row.querySelector('.fluff-feedback-btn.fluff-confirm').textContent = t('fluff_confirmed');
-    row.querySelector('.fluff-feedback-btn.fluff-confirm').disabled = true;
-    row.querySelector('.fluff-feedback-btn.fluff-dismiss').style.display = 'none';
-  }
-  // Also update the highlight in the text panel
+  const { quote, tests } = fluffCardData(row);
+  sendFeedback({ quote, tests_failed: tests, verdict: action === 'confirm' ? 'YES fluff' : 'NO not fluff', action });
+  setFluffCardState(row, action);
+}
+function fluffUndo(fid) {
+  const row = document.getElementById(fid);
+  if (!row) return;
+  const { quote, tests } = fluffCardData(row);
+  undoVerdict({ quote, tests_failed: tests });
+  setFluffCardState(row, null);
+}
+// action: 'confirm', 'dismiss', or null when the verdict was undone (the card is back to its two buttons)
+function setFluffCardState(row, action) {
+  const ok = row.querySelector('.fluff-confirm'), no = row.querySelector('.fluff-dismiss'), undo = row.querySelector('.fluff-undo');
+  row.classList.toggle('dismissed', action === 'dismiss');
+  row.classList.toggle('confirmed', action === 'confirm');
+  ok.textContent = t(action === 'confirm' ? 'fluff_confirmed' : 'fluff_ok_btn');
+  no.textContent = t(action === 'dismiss' ? 'fluff_dismissed' : 'fluff_dismiss_btn');
+  ok.disabled = no.disabled = !!action;
+  ok.style.display = action === 'dismiss' ? 'none' : '';
+  no.style.display = action === 'confirm' ? 'none' : '';
+  if (undo) undo.style.display = action ? '' : 'none';
   const idx = row.dataset.fluffIdx;
-  if (idx !== undefined) {
-    const hl = document.querySelector(`.fluff-hl[data-fluff-idx="${idx}"]`);
-    if (hl) {
-      if (action === 'dismiss') { hl.style.opacity = '0.25'; hl.style.textDecoration = 'line-through'; }
-      else { hl.style.outline = '2px solid var(--red)'; }
-    }
+  const item = _qualityView?.fluff?.[Number(idx)];
+  if (item) { item._dismissed = action === 'dismiss'; refreshQualityCounts(); }
+  // The highlight in the text panel follows
+  const hl = document.querySelector(`.fluff-hl[data-fluff-idx="${idx}"]`);
+  if (hl) {
+    hl.style.opacity = action === 'dismiss' ? '0.25' : '';
+    hl.style.textDecoration = action === 'dismiss' ? 'line-through' : '';
+    hl.style.outline = action === 'confirm' ? '2px solid var(--red)' : '';
   }
 }
 
 function getFluffFeedbackStats() {
   try {
-    const entries = JSON.parse(localStorage.getItem('media_dashboard_fluff_feedback') || '[]');
+    const entries = localVerdicts();
     const confirmed = entries.filter(e => e.action === 'confirm').length;
     const dismissed = entries.filter(e => e.action === 'dismiss').length;
     return { total: entries.length, confirmed, dismissed, entries };
@@ -8411,7 +8542,7 @@ function getFluffFeedbackStats() {
 
 function exportFluffFeedback() {
   try {
-    const entries = JSON.parse(localStorage.getItem('media_dashboard_fluff_feedback') || '[]');
+    const entries = localVerdicts();
     if (!entries.length) { alert(t('fluff_no_data') || 'No feedback data yet.'); return; }
     const header = 'URL,Domain,Quote,Tests Failed,Verdict,Reviewer,Date';
     const rows = entries.map(e => {
