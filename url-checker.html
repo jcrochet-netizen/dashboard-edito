@@ -5752,13 +5752,21 @@ function extractBodyText(doc) {
   return result;
 }
 
+// Link to a social post (tweet, Instagram post or reel, TikTok video, YouTube video)
+const SOCIAL_POST_LINK = /(?:twitter\.com|x\.com)\/[^/?#]+\/status\/|ref_src=twsrc|instagram\.com\/(?:p|reel|tv)\/|tiktok\.com\/@[^/?#]+\/video\/|youtube\.com\/(?:watch|shorts\/)|youtu\.be\//i;
+
+// Embedded posts are someone else's text: the editor cannot change their wording or punctuation
 function isInsideEmbed(el, boundary) {
   let node = el.parentElement;
   while (node && node !== boundary) {
     const cls = (node.className || '').toLowerCase();
     const tag = node.tagName.toLowerCase();
     if (tag === 'blockquote' && (cls.includes('twitter') || cls.includes('instagram') || cls.includes('tiktok'))) return true;
-    if (cls.includes('twitter-tweet') || cls.includes('fb-post') || cls.includes('instagram-media') || cls.includes('tiktok-embed')) return true;
+    if (cls.includes('twitter-tweet') || cls.includes('fb-post') || cls.includes('instagram-media') || cls.includes('tiktok-embed') || cls.includes('wp-block-embed')) return true;
+    // A tweet pasted as a plain quote block (class "wp-block-quote", the twitter-tweet class lost) still ends
+    // with the link to the post: "— CANAL+ Foot (@CanalplusFoot) November 19, 2026"
+    if (tag === 'blockquote' && (SOCIAL_POST_LINK.test(node.getAttribute('cite') || '') ||
+        [...node.querySelectorAll('a[href]')].some(a => SOCIAL_POST_LINK.test(a.getAttribute('href'))))) return true;
     if (tag === 'iframe') return true;
     node = node.parentElement;
   }
