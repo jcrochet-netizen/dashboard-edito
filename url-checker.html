@@ -1937,7 +1937,8 @@ const T = {
     img_overlay_label: "Overlay text / logo",
     img_overlay_none: "None",
     img_overlay_incidental: "Only text from the scene (shirts, boards)",
-    img_overlay_logo_or_watermark: "Logo or watermark",
+    img_overlay_site_logo: "Only the site's own logo",
+    img_overlay_logo_or_watermark: "Agency watermark or large logo",
     img_overlay_headline_overlay: "Text added on the photo",
     img_crop_label: "16:9 crop",
     img_crop_ok: "Main subject survives a 16:9 crop",
@@ -2410,7 +2411,8 @@ const T = {
     img_overlay_label: "Texte incrusté / logo",
     img_overlay_none: "Aucun",
     img_overlay_incidental: "Seulement du texte de la scène (maillots, panneaux)",
-    img_overlay_logo_or_watermark: "Logo ou filigrane",
+    img_overlay_site_logo: "Seulement le logo du site",
+    img_overlay_logo_or_watermark: "Filigrane d'agence ou gros logo",
     img_overlay_headline_overlay: "Texte ajouté sur la photo",
     img_crop_label: "Recadrage 16:9",
     img_crop_ok: "Le sujet principal reste entier en 16:9",
@@ -2865,7 +2867,8 @@ const T = {
     img_overlay_label: "Texto sobreposto / logo",
     img_overlay_none: "Nenhum",
     img_overlay_incidental: "Apenas texto da cena (camisas, placas)",
-    img_overlay_logo_or_watermark: "Logo ou marca d'água",
+    img_overlay_site_logo: "Apenas o logo do site",
+    img_overlay_logo_or_watermark: "Marca d'água de agência ou logo grande",
     img_overlay_headline_overlay: "Texto adicionado sobre a foto",
     img_crop_label: "Corte 16:9",
     img_crop_ok: "O assunto principal continua inteiro em 16:9",
@@ -3338,7 +3341,8 @@ const T = {
     img_overlay_label: "Texto superpuesto / logo",
     img_overlay_none: "Ninguno",
     img_overlay_incidental: "Solo texto de la escena (camisetas, vallas)",
-    img_overlay_logo_or_watermark: "Logo o marca de agua",
+    img_overlay_site_logo: "Solo el logo del sitio",
+    img_overlay_logo_or_watermark: "Marca de agua de agencia o logo grande",
     img_overlay_headline_overlay: "Texto añadido sobre la foto",
     img_crop_label: "Recorte 16:9",
     img_crop_ok: "El sujeto principal queda entero en 16:9",
@@ -4394,7 +4398,7 @@ async function runImageAI(imageUrl) {
   const data = await callOpenAI({
     model: OPENAI_MODEL,
     messages: [
-      { role: 'system', content: `You are the photo editor of a network of sports news sites, and a demanding one. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject that stands out from a clean background, and penalises crowded scenes, logos, watermarks and text written on the image. The background matters: giant lettering, logo walls, sponsor boards or busy patterns behind the subject compete with it, even when that text belongs to the scene. But a stadium photo almost always has fans behind the player: a blurred crowd or stands behind a subject who clearly stands out is not a problem. The page computes the score from your categories, so every problem must show in a category. Answer ONLY through the image_report tool. Write every comment and the summary in ${langName}.` },
+      { role: 'system', content: `You are the photo editor of a network of sports news sites, and a demanding one. You judge whether an article's lead image will make readers tap the card in Google Discover. Discover rewards close, sharp, emotional photos with one clear subject that stands out from a clean background, and penalises crowded scenes, headline text written on the image and photo-agency watermarks. In a photo, the background matters: giant lettering, logo walls, sponsor boards or busy patterns behind the subject compete with it, even when that text belongs to the scene. But a stadium photo almost always has fans behind the player: a blurred crowd or stands behind a subject who clearly stands out is not a problem. Many images of the network are made with a design tool (Azzuu): the player is cut out and set in front of a graphic background of geometric shapes, hexagons, stripes, gradients, neon or light lines, and the site's own logo sits in a corner. That is the house style: neither the designed background nor the site's logo is a problem. The page computes the score from your categories, so every problem must show in a category. Answer ONLY through the image_report tool. Write every comment and the summary in ${langName}.` },
       { role: 'user', content: [
         { type: 'text', text: 'Review this lead image for Google Discover.' },
         { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } }
@@ -4416,13 +4420,13 @@ async function runImageAI(imageUrl) {
               framing: { type: 'string', enum: ['none', 'single', 'duo', 'small_group', 'crowded'], description: 'none = nobody (stadium, ball, logo), single = 1, duo = 2, small_group = 3-4, crowded = 5 or more' },
               comment: { type: 'string' } }, required: ['count', 'framing', 'comment'] },
             background: { type: 'object', properties: {
-              status: { type: 'string', enum: ['clean', 'busy', 'distracting'], description: 'Ask one question: does the main subject stand out at a glance? clean = yes: plain background, or an out-of-focus one. A blurred crowd, stands, stadium lights, pitch-side LED boards or bokeh behind a sharp, well-lit player is the normal match photo and is clean, never a problem in itself; busy = the subject still reads at a glance, but sharp elements behind it (other players or fans in focus, readable sponsor boards) pull some attention; distracting = the subject does NOT stand out: it blends into the background (same colours, same sharpness), or giant lettering, a logo wall or people in focus draw the eye as much as the subject does' },
+              status: { type: 'string', enum: ['clean', 'busy', 'distracting'], description: 'Ask one question: does the main subject stand out at a glance? clean = yes: plain background, or an out-of-focus one. A blurred crowd, stands, stadium lights, pitch-side LED boards or bokeh behind a sharp, well-lit player is the normal match photo and is clean, never a problem in itself. A designed graphic background behind a cut-out player (geometric shapes, hexagons, stripes, gradients, neon or light lines, however bright or patterned) is the house template of the network and is clean too: the player sits in front of it; busy = the subject still reads at a glance, but sharp elements behind it (other players or fans in focus, readable sponsor boards) pull some attention; distracting = the subject does NOT stand out: it blends into the background (same colours, same sharpness), or giant lettering, a logo wall or people in focus draw the eye as much as the subject does' },
               comment: { type: 'string' } }, required: ['status', 'comment'] },
             sharpness: { type: 'object', properties: {
               status: { type: 'string', enum: ['sharp', 'soft', 'blurry_or_pixelated'], description: 'Judge the main subject: a blurred background behind a sharp subject is sharp' },
               comment: { type: 'string' } }, required: ['status', 'comment'] },
             text_overlay: { type: 'object', properties: {
-              kind: { type: 'string', enum: ['none', 'incidental', 'logo_or_watermark', 'headline_overlay'], description: 'incidental = text that is part of the scene (shirts, sponsor boards, stadium signs; if it dominates the background, also rate the background distracting); headline_overlay = words added on top of the photo' },
+              kind: { type: 'string', enum: ['none', 'incidental', 'site_logo', 'logo_or_watermark', 'headline_overlay'], description: 'incidental = text that is part of the scene (shirts, sponsor boards, stadium signs; if it dominates the background, also rate the background distracting); site_logo = the publishing site\'s own logo or watermark, small, in a corner or along an edge (a monogram such as "FW", the site name): the house style, not a problem; logo_or_watermark = a photo-agency watermark (Getty Images, Shutterstock, Alamy, iStock...) or a logo large enough to cover part of the subject; headline_overlay = words added on top of the photo. When several apply, give the most serious: headline_overlay, then logo_or_watermark, then site_logo or incidental' },
               comment: { type: 'string' } }, required: ['kind', 'comment'] },
             crop_16_9: { type: 'object', properties: {
               safe: { type: 'boolean', description: 'The main subject (faces included) stays whole in a centred 16:9 crop' },
@@ -4548,7 +4552,7 @@ function imageAiChecks(ai) {
     row(t('img_people_label'), { single: 'ok', duo: 'ok', small_group: 'warning', none: 'warning' }[fr] || 'fail', t('img_people_' + (fr || 'crowded')) + (ai.people?.count != null ? ' (' + ai.people.count + ')' : ''), ai.people?.comment),
     row(t('img_bg_label'), { clean: 'ok', busy: 'warning' }[bg] || 'fail', t('img_bg_' + (bg || 'distracting')), ai.background?.comment),
     row(t('img_sharp_label'), { sharp: 'ok', soft: 'warning' }[sh] || 'fail', t('img_sharp_' + (sh || 'blurry_or_pixelated')), ai.sharpness?.comment),
-    row(t('img_overlay_label'), { none: 'ok', incidental: 'ok', logo_or_watermark: 'warning' }[ov] || 'fail', t('img_overlay_' + (ov || 'headline_overlay')), ai.text_overlay?.comment),
+    row(t('img_overlay_label'), { none: 'ok', incidental: 'ok', site_logo: 'ok', logo_or_watermark: 'warning' }[ov] || 'fail', t('img_overlay_' + (ov || 'headline_overlay')), ai.text_overlay?.comment),
     row(t('img_crop_label'), ai.crop_16_9?.safe ? 'ok' : 'warning', t(ai.crop_16_9?.safe ? 'img_crop_ok' : 'img_crop_bad'), ai.crop_16_9?.comment),
   ];
 }
